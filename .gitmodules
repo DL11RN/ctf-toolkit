@@ -1,0 +1,27 @@
+[submodule "vendor/hacktricks"]
+	path = vendor/hacktricks
+	url = https://github.com/HackTricks-wiki/hacktricks
+[submodule "vendor/payloads"]
+	path = vendor/payloads
+	url = https://github.com/swisskyrepo/PayloadsAllTheThings
+[submodule "vendor/gtfobins"]
+	path = vendor/gtfobins
+	url = https://github.com/GTFOBins/GTFOBins.github.io
+[submodule "vendor/lolbas"]
+	path = vendor/lolbas
+	url = https://github.com/LOLBAS-Project/LOLBAS
+[submodule "vendor/ctf-wiki"]
+	path = vendor/ctf-wiki
+	url = https://github.com/ctf-wiki/ctf-wiki
+[submodule "vendor/how2heap"]
+	path = vendor/how2heap
+	url = https://github.com/shellphish/how2heap
+[submodule "vendor/olicyber-writeups"]
+	path = vendor/olicyber-writeups
+	url = https://github.com/OliCyberIT/OliCyber.IT-Writeups
+[submodule "vendor/rsactftool"]
+	path = vendor/rsactftool
+	url = https://github.com/RsaCtfTool/RsaCtfTool
+[submodule "vendor/crypto-attacks"]
+	path = vendor/crypto-attacks
+	url = https://github.com/jvdsn/crypto-attacks

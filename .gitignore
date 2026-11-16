@@ -1,0 +1,18 @@
+# Ambiente Python
+.venv/
+__pycache__/
+*.pyc
+
+# Artefatti di lavoro durante la gara (non versionare roba delle sfide)
+work/
+scratch/
+*.core
+core
+
+# SecLists / CyberChef sono scaricati dagli script, non versionati come blob
+vendor/seclists/
+vendor/cyberchef/
+vendor/pwndbg/
+
+# OS
+.DS_Store

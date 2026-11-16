@@ -1,0 +1,34 @@
+# Installa in un venv:
+#   python3 -m venv .venv && source .venv/bin/activate && pip install -r tools/requirements.txt
+
+# --- Core pwn / exploit dev ---
+pwntools            # client remoto/locale, cyclic, ROP, fmtstr, gdb helper
+ropgadget           # ricerca gadget ROP
+# ropper            # alternativa a ROPgadget (decommenta se preferito)
+unicorn            # emulazione CPU (usato anche da angr)
+capstone           # disassembler
+keystone-engine    # assembler
+
+# --- Reverse / symbolic ---
+angr                # esecuzione simbolica
+z3-solver           # risolutore vincoli (SMT)
+# pwndbg / gef si installano separatamente (plugin gdb), vedi notes/pwn/cheatsheet.md
+
+# --- Crypto ---
+pycryptodome        # primitive crypto (AES, RSA, ...)
+gmpy2               # aritmetica a precisione arbitraria (serve a molti attacchi RSA)
+sympy               # matematica simbolica (teoria dei numeri)
+# RsaCtfTool si usa dal submodule vendor/rsactftool (ha un suo requirements)
+
+# --- Forensics / misc ---
+# strumenti di sistema (binwalk, foremost, exiftool, volatility3, steghide...) via apt,
+# vedi notes/forensics/cheatsheet.md. Qui solo i pacchetti pip:
+pillow              # manipolazione immagini (LSB, canali, ...)
+numpy
+scapy               # analisi/crafting pacchetti (pcap)
+python-magic        # identificazione tipo file
+
+# --- Web ---
+requests
+pyjwt               # ispezione/forgiatura JWT (lato studio)
+beautifulsoup4
