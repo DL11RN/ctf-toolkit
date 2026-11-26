@@ -14,6 +14,15 @@ ffuf -u https://target/FUZZ -w vendor/seclists/Discovery/Web-Content/raft-medium
 # header di risposta, cookie (flag, struttura), parametri GET/POST, 403/redirect sospetti.
 ```
 
+## Fondamenti protocollo HTTP (verbi / header / cookie / body)
+Se la sfida **non ha una vuln** ma chiede solo di "fare la richiesta giusta" con `requests`
+(GET con `params`, HEAD, cookie/sessione, POST form vs JSON, OPTIONS + verbo inatteso):
+→ **`notes/web/http-requests.md`** (ricette + equivalenti `curl` + `templates/http_probe.py`).
+
+Promemoria: la flag può stare nel **body**, negli **header** (tipico con HEAD), nei **cookie**,
+nell'header **`Allow`** (OPTIONS), nel **`Location`** di un redirect o in un **errore verboso**
+provocato da un verbo/input inatteso. Guardali tutti, non solo `r.text`.
+
 ## Schema: "se osservo X → controlla Y → apri Z"
 
 | Osservi | Ipotesi da controllare | Dove approfondire |
@@ -32,6 +41,7 @@ ffuf -u https://target/FUZZ -w vendor/seclists/Discovery/Web-Content/raft-medium
 | Doppia richiesta cambia lo stato | Race condition | `[H]` Race condition |
 | Controllo accessi per ID (`?id=`) | IDOR / broken access control | `[H]` IDOR |
 | GraphQL endpoint | Introspection, query abuse | `[H]` GraphQL |
+| Solo "fai la richiesta giusta" (verbi/header/cookie) | Fondamenti HTTP con `requests` | `notes/web/http-requests.md` |
 
 ## Se ti danno il sorgente (frequente in CINI)
 1. Cerca dove l'input utente entra in: query SQL, `eval`/`exec`, template, `open()`/path, `system()`, deserializzazione.

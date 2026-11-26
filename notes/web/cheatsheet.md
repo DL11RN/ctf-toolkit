@@ -20,6 +20,22 @@ curl -sS 'https://target/api' -d 'user=admin&pass=x' -b 'session=...' -H 'Conten
 # Salva e rigioca richieste: usa Burp (Repeater/Intruder) o requests in Python (templates)
 ```
 
+## requests per verbo (fondamenti HTTP)
+Dettagli e casistiche simili: `notes/web/http-requests.md`. Scaffold: `templates/http_session.py`.
+Probe automatico di tutti i posti dove sta la flag: `python3 templates/http_probe.py http://target/`.
+```python
+import requests
+requests.get(url, params={"id": "flag"})            # GET: coppie nella query string
+r = requests.head(url); print(dict(r.headers))      # HEAD: flag negli HEADER (body vuoto)
+s = requests.Session(); s.get(url+"/token"); s.get(url+"/flag")   # cookie di sessione
+requests.post(url, data={"username":"admin","password":"admin"})  # POST form-urlencoded
+requests.post(url, json={"username":"admin","password":"admin"})  # POST JSON
+r = requests.options(url); print(r.headers["Allow"])              # verbi supportati
+requests.request("FOO", url)                         # verbo arbitrario/inatteso
+requests.get(url, allow_redirects=False)             # guarda Location / r.history
+requests.get(url, headers={"X-Forwarded-For":"127.0.0.1"})       # spoof header
+```
+
 ## Strumenti per classe (uso lecito, didattico)
 | Classe | Strumento | Nota |
 |---|---|---|
